@@ -5,7 +5,12 @@ import { logError, logStep } from "@/lib/log";
 import { chatJSON, currentModel } from "@/lib/openai";
 import type { AreaBrief, AreaBriefInput, NewsSource } from "@/types/area-brief";
 
-const TTL_MS = (Number(process.env.AREA_BRIEF_TTL_MINUTES) || 60) * 60 * 1000;
+// News + AI summary are cached in SQLite (persisted in the frontend-data volume, so
+// they survive a `docker compose up --build`). Default 12h so a rebuild/restart within
+// the same half-day serves the cached copy instead of re-hitting Brave + OpenAI; this
+// matches the 12h warm cadence (see brief-worker.ts / instrumentation.ts). Override with
+// AREA_BRIEF_TTL_MINUTES.
+const TTL_MS = (Number(process.env.AREA_BRIEF_TTL_MINUTES) || 720) * 60 * 1000;
 
 const DISASTER_VI: Record<string, string> = {
   flood: "mưa lũ, ngập lụt",
@@ -166,7 +171,7 @@ async function summarize(
 
 /**
  * Return the shared AI news brief for an area+day. Serves the DB copy when it is
- * newer than the TTL (default 60 min); otherwise fetches fresh news via Brave,
+ * newer than the TTL (default 12h); otherwise fetches fresh news via Brave,
  * summarizes with OpenAI, upserts, and returns. On generation failure a still-cached
  * copy is returned (stale) rather than erroring.
  */

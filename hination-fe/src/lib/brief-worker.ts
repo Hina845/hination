@@ -25,7 +25,8 @@ async function fetchForecast(): Promise<ForecastResponse | null> {
  * Pre-generate the news brief (and AI prediction) for every area of the current
  * forecast day. Runs on server startup and every 12 hours. Sequential to stay gentle
  * on the Brave/OpenAI rate limits; each area regenerates only if its cache is stale
- * (getAreaBrief honours the TTL, which is far shorter than the 12h cadence).
+ * (getAreaBrief honours the 12h TTL, so a startup warm after a rebuild reuses the
+ * cached briefs and only genuinely stale areas re-hit Brave/OpenAI).
  */
 export async function warmAllBriefs(trigger: string): Promise<void> {
   if (running) {
