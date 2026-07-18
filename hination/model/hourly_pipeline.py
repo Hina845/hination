@@ -14,6 +14,7 @@ Reference:
 """
 
 import os
+import time
 import warnings
 import requests
 from datetime import datetime
@@ -36,6 +37,19 @@ FORECAST_DAYS = int(os.getenv("HINATION_FORECAST_DAYS", "7"))
 FORECAST_TIMEZONE = os.getenv("HINATION_TIMEZONE", "Asia/Ho_Chi_Minh")
 GFS_TIMEOUT = int(os.getenv("HINATION_GFS_TIMEOUT", "30"))
 FORECAST_HOURS = FORECAST_DAYS * 24
+
+# Resilience knobs. The free Open-Meteo tier rate-limits (HTTP 429); without
+# retries + throttling a single 429 used to fail one commune and abort the whole
+# run. These mirror the retry/backoff already used in providers/era5_provider.py.
+GFS_RETRIES = int(os.getenv("HINATION_GFS_RETRIES", "3"))
+GFS_RETRY_BACKOFF_S = [
+    float(x) for x in os.getenv("HINATION_GFS_RETRY_BACKOFF", "2,5,10").split(",") if x.strip()
+]
+# Small pause between the 45 sequential commune requests so we don't burst the limit.
+GFS_REQUEST_DELAY = float(os.getenv("HINATION_GFS_REQUEST_DELAY", "0.3"))
+# Publish a run only if at least this fraction of communes were fetched. Below it,
+# we keep the previous good snapshot instead of overwriting with a sparse one.
+MIN_AREA_COVERAGE = float(os.getenv("HINATION_MIN_AREA_COVERAGE", "0.9"))
 
 # ============================================================
 # Current communes/wards in Điện Biên
@@ -79,8 +93,21 @@ HOURLY_VARS = [
 # Fetching from Open-Meteo (GFS Seamless)
 # ============================================================
 
+def _backoff_seconds(retry_idx):
+    """Seconds to wait before retry #retry_idx (1-based); reuses the last value once exhausted."""
+    if not GFS_RETRY_BACKOFF_S:
+        return 0.0
+    return GFS_RETRY_BACKOFF_S[min(retry_idx - 1, len(GFS_RETRY_BACKOFF_S) - 1)]
+
+
 def fetch_hourly(lat, lon, hours=FORECAST_HOURS, models=GFS_MODEL):
-    """Fetch `FORECAST_DAYS`×24 hours of live GFS forecast (via Open-Meteo)."""
+    """
+    Fetch `FORECAST_DAYS`×24 hours of live GFS forecast (via Open-Meteo).
+
+    Retries transient failures (HTTP 429 rate-limit, 5xx, network errors) with
+    backoff before giving up, so a single throttled request no longer sinks the
+    whole refresh. Returns {'error': ...} only after all attempts are exhausted.
+    """
     params = {
         'latitude': lat,
         'longitude': lon,
@@ -89,16 +116,29 @@ def fetch_hourly(lat, lon, hours=FORECAST_HOURS, models=GFS_MODEL):
         'forecast_days': FORECAST_DAYS,
         'models': models
     }
-    try:
-        resp = requests.get(
-            GFS_FORECAST_URL,
-            params=params,
-            timeout=GFS_TIMEOUT
-        )
-        data = resp.json()
-        return data if 'error' not in data else {'error': data.get('reason', 'unknown')}
-    except Exception as e:
-        return {'error': str(e)}
+    last_err = 'unknown'
+    for attempt in range(GFS_RETRIES + 1):
+        if attempt:
+            wait = _backoff_seconds(attempt)
+            if wait:
+                time.sleep(wait)
+        try:
+            resp = requests.get(GFS_FORECAST_URL, params=params, timeout=GFS_TIMEOUT)
+            if resp.status_code == 200:
+                data = resp.json()
+                if 'error' in data:
+                    # 200 body carrying an error (rare) — retry in case it's transient.
+                    last_err = data.get('reason', 'unknown')
+                    continue
+                return data
+            if resp.status_code == 429 or resp.status_code >= 500:
+                last_err = f'HTTP {resp.status_code} (rate-limited/transient)'
+                continue
+            # Other 4xx are not worth retrying (bad params etc.).
+            return {'error': f'HTTP {resp.status_code}: {resp.text[:200]}'}
+        except Exception as e:
+            last_err = str(e)
+    return {'error': last_err}
 
 
 # ============================================================
@@ -224,13 +264,43 @@ def run_pipeline(forecast_run_id=None):
             all_data[did] = data
             log_fetch_sample(info['name'], data)
         else:
-            print(f"   • {info['name']:<25s} ✗ {data.get('error', 'fail')[:30]}")
+            print(f"   • {info['name']:<25s} ✗ {data.get('error', 'fail')[:40]}")
+        if GFS_REQUEST_DELAY:
+            time.sleep(GFS_REQUEST_DELAY)  # throttle so 45 back-to-back calls don't burst the limit
 
+    # Second pass: retry the stragglers once — but only if the first pass got
+    # SOMETHING back. If every area failed the API is down/blocked, so hammering
+    # it 45 more times is pointless.
     missing_area_ids = sorted(set(DISTRICTS) - set(all_data))
+    if all_data and missing_area_ids:
+        print(f"\n🔁 Retrying {len(missing_area_ids)} area(s) that failed the first pass...")
+        for did in missing_area_ids:
+            info = DISTRICTS[did]
+            data = fetch_hourly(info['lat'], info['lon'])
+            if 'hourly' in data:
+                all_data[did] = data
+                log_fetch_sample(info['name'], data)
+            else:
+                print(f"   • {info['name']:<25s} ✗ (retry) {data.get('error', 'fail')[:40]}")
+            if GFS_REQUEST_DELAY:
+                time.sleep(GFS_REQUEST_DELAY)
+        missing_area_ids = sorted(set(DISTRICTS) - set(all_data))
+
+    # Coverage gate — tolerate a few gaps, but never crash the process (that used
+    # to trigger a Docker restart loop) and never publish a sparse snapshot.
+    coverage = len(all_data) / len(DISTRICTS)
+    if coverage < MIN_AREA_COVERAGE:
+        print(
+            f"\n⚠️  Forecast refresh aborted: only {len(all_data)}/{len(DISTRICTS)} areas "
+            f"({coverage:.0%} < {MIN_AREA_COVERAGE:.0%} required) fetched. "
+            f"Keeping the previous snapshot; not overwriting hourly_forecast.json.\n"
+            f"   Missing: {', '.join(missing_area_ids)[:200]}"
+        )
+        return {}
     if missing_area_ids:
-        raise RuntimeError(
-            f"Forecast refresh incomplete: {len(missing_area_ids)} of {len(DISTRICTS)} areas failed: "
-            + ", ".join(missing_area_ids)
+        print(
+            f"\n⚠️  Proceeding with partial coverage: {len(all_data)}/{len(DISTRICTS)} areas "
+            f"({coverage:.0%}). Missing: {', '.join(missing_area_ids)}"
         )
 
     # ===========================================================

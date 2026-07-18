@@ -20,14 +20,23 @@ async function getForecast(): Promise<ForecastResponse | null> {
 // Fold each area's warmed AI prediction into a combined "overall" level so the map
 // renders reduced-API + news scoring immediately. Areas without a warmed brief fall
 // back to (API − 1). Also recomputes each day's max alert level from the overall values.
+//
+// The news brief is warmed only for the current day (day 0) and its predictLevel is a
+// "right now" signal, not a per-day one. So we read day 0's levels once as a base and
+// reuse them across the whole 7-day horizon — otherwise days 1-6 would always show
+// predictLevel 0 and the news signal would never move those days. A day that happens to
+// have its own warmed row still wins.
 function applyOverallLevels(forecast: ForecastResponse): ForecastResponse {
+  const warmedDate = forecast.days[0]?.date.slice(0, 10);
+  const basePredicts = warmedDate ? readPredictLevelsForDate(warmedDate) : new Map<string, number>();
+
   return {
     ...forecast,
     days: forecast.days.map((day) => {
-      const predicts = readPredictLevelsForDate(day.date.slice(0, 10));
+      const dayPredicts = readPredictLevelsForDate(day.date.slice(0, 10));
       let maxOverall = 0;
       const areas = day.areas.map((area) => {
-        const predictLevel = predicts.get(area.id) ?? 0;
+        const predictLevel = dayPredicts.get(area.id) ?? basePredicts.get(area.id) ?? 0;
         const overall = overallLevel(area.danger.level, predictLevel);
         maxOverall = Math.max(maxOverall, overall);
         return { ...area, danger: { ...area.danger, overallLevel: overall, predictLevel } };

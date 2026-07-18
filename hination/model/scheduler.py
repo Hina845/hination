@@ -23,21 +23,40 @@ REFRESH_INTERVAL_HOURS = int(os.getenv("HINATION_REFRESH_INTERVAL_HOURS", "1"))
 
 
 def refresh_forecasts() -> str:
-    """Run weather first, then danger, sharing one run identifier."""
+    """
+    Run weather first, then danger, sharing one run identifier.
+
+    Each stage is guarded: a failure (or a rate-limited weather refresh that
+    couldn't reach the coverage threshold) is logged and swallowed so the
+    scheduler keeps ticking instead of crashing the process — which previously
+    caused a Docker restart loop. If the weather refresh produced no fresh
+    output, the danger stage is skipped (it would only re-read stale data).
+    """
     forecast_run_id = str(uuid.uuid4())
-    run_pipeline(forecast_run_id=forecast_run_id)
-    
-    # Pass model_dir for v2
-    if _use_v2:
-        run_disaster_forecast(forecast_run_id=forecast_run_id, model_dir=MODEL_DIR)
-    else:
-        run_disaster_forecast(forecast_run_id=forecast_run_id)
-    
+
+    weather = None
+    try:
+        weather = run_pipeline(forecast_run_id=forecast_run_id)
+    except Exception as exc:  # never let a weather failure kill the loop
+        print(f"⚠️  Weather refresh failed ({forecast_run_id}): {exc}")
+
+    if not weather:
+        print("⚠️  Skipping danger stage — no fresh weather snapshot this run.")
+        return forecast_run_id
+
+    try:
+        if _use_v2:
+            run_disaster_forecast(forecast_run_id=forecast_run_id, model_dir=MODEL_DIR)
+        else:
+            run_disaster_forecast(forecast_run_id=forecast_run_id)
+    except Exception as exc:  # danger failure shouldn't kill the loop either
+        print(f"⚠️  Danger refresh failed ({forecast_run_id}): {exc}")
+
     return forecast_run_id
 
 
 def start_scheduler() -> None:
-    refresh_forecasts()
+    refresh_forecasts()  # refresh_forecasts is self-guarding; it never raises
     schedule.every(REFRESH_INTERVAL_HOURS).hours.do(refresh_forecasts)
     while True:
         schedule.run_pending()
