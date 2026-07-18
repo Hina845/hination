@@ -405,9 +405,11 @@ class DisasterNNv3(nn.Module):
         # Deep backbone with residual blocks
         layers = []
         prev_dim = hidden_dims[0]
-        for i, hdim in enumerate(hidden_dims):
-            if i > 0:
-                layers.append(ResidualBlock(hdim, dropout))
+        for i, hdim in enumerate(hidden_dims[1:], 1):
+            # Project from prev_dim to hdim if needed
+            if prev_dim != hdim:
+                layers.append(nn.Linear(prev_dim, hdim))
+            layers.append(ResidualBlock(hdim, dropout))
             prev_dim = hdim
         self.backbone = nn.ModuleList(layers)
         
