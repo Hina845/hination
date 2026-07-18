@@ -10,10 +10,13 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   // better-sqlite3 must not be pulled into the Edge bundle, so import lazily here.
-  const { warmAllBriefs } = await import("@/lib/brief-worker");
+  const { warmAllBriefs, warmAllBriefsWhenReady } = await import("@/lib/brief-worker");
 
-  // Kick off the startup warm without blocking server boot.
-  void warmAllBriefs("startup");
+  // Kick off the startup warm without blocking server boot. Use the ready-aware variant:
+  // on a fresh deploy the backend serves 503 for the first ~2 min while the scheduler
+  // builds the forecast, so a one-shot warm would give up and leave the news / AI
+  // predict_level overlay empty until the next 12h tick.
+  void warmAllBriefsWhenReady("startup");
 
   // Schedule the recurring 12h warm exactly once per process (dev hot-reload safe).
   const globalForWorker = globalThis as typeof globalThis & { __briefWarmTimer?: ReturnType<typeof setInterval> };

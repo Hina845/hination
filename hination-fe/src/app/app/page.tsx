@@ -36,8 +36,14 @@ function applyOverallLevels(forecast: ForecastResponse): ForecastResponse {
       const dayPredicts = readPredictLevelsForDate(day.date.slice(0, 10));
       let maxOverall = 0;
       const areas = day.areas.map((area) => {
-        const predictLevel = dayPredicts.get(area.id) ?? basePredicts.get(area.id) ?? 0;
-        const overall = overallLevel(area.danger.level, predictLevel);
+        const predict = dayPredicts.get(area.id) ?? basePredicts.get(area.id);
+        // No warmed brief for this area yet (fresh deploy while the warm runs, or the
+        // Brave/OpenAI keys are unset): there's no news signal to calibrate against, so
+        // show the raw model level rather than the reduced one. This keeps the map on the
+        // real (varied) levels instead of collapsing every area to level−1 ("all low").
+        // Once the brief warms, `predict` is defined and the intended reduce+news blend applies.
+        const predictLevel = predict ?? 0;
+        const overall = predict === undefined ? area.danger.level : overallLevel(area.danger.level, predict);
         maxOverall = Math.max(maxOverall, overall);
         return { ...area, danger: { ...area.danger, overallLevel: overall, predictLevel } };
       });

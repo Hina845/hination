@@ -28,10 +28,10 @@ async function fetchForecast(): Promise<ForecastResponse | null> {
  * (getAreaBrief honours the 12h TTL, so a startup warm after a rebuild reuses the
  * cached briefs and only genuinely stale areas re-hit Brave/OpenAI).
  */
-export async function warmAllBriefs(trigger: string): Promise<void> {
+export async function warmAllBriefs(trigger: string): Promise<boolean> {
   if (running) {
     logStep("worker", "skip — a warm run is already in progress", { trigger });
-    return;
+    return false;
   }
   running = true;
   const startedAt = Date.now();
@@ -41,8 +41,11 @@ export async function warmAllBriefs(trigger: string): Promise<void> {
     const forecast = await fetchForecast();
     const day = forecast?.days?.[0];
     if (!day) {
+      // Backend has no forecast yet (503 during the scheduler's first run on a fresh
+      // deploy). Signal "not ready" so the caller can retry instead of leaving the
+      // news / AI predict_level overlay empty until the next 12h tick.
       logStep("worker", "no forecast day available — nothing to warm");
-      return;
+      return false;
     }
 
     const date = day.date.slice(0, 10);
@@ -75,9 +78,35 @@ export async function warmAllBriefs(trigger: string): Promise<void> {
     }
 
     logStep("worker", "warm run complete", { ok, failed, ms: Date.now() - startedAt });
+    return true;
   } catch (error) {
     logError("worker", "warm run failed", error);
+    return false;
   } finally {
     running = false;
   }
+}
+
+/**
+ * Startup helper: keep trying warmAllBriefs until the backend forecast is actually
+ * available. On a fresh `docker compose up`, the scheduler needs a couple of minutes
+ * to fetch 45 communes and write the forecast, so the very first warm attempt races
+ * the backend's 503 window. Without this retry the news / AI predict_level overlay
+ * would stay empty on prod until the next 12h tick — which looked like "prod predictions
+ * don't match local". Bounded so it can't spin forever if the backend never comes up.
+ */
+export async function warmAllBriefsWhenReady(
+  trigger: string,
+  maxAttempts = 20,
+  delayMs = 30_000,
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const warmed = await warmAllBriefs(attempt === 1 ? trigger : `${trigger}-retry-${attempt}`);
+    if (warmed) return;
+    if (attempt < maxAttempts) {
+      logStep("worker", "forecast not ready — will retry", { attempt, maxAttempts, delaySeconds: delayMs / 1000 });
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  logStep("worker", "gave up waiting for a forecast to warm briefs", { maxAttempts });
 }

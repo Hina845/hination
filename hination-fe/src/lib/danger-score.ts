@@ -7,13 +7,13 @@
 //   overall = min(5, max(0, apiLevel − 1) + predictLevel)
 // e.g. API 3 → reduced 2, AI 2 → overall 4.
 
-export const MAX_OVERALL_LEVEL = 5;
+export const MAX_OVERALL_LEVEL = ;
 export const MAX_PREDICT_LEVEL = 2;
 
 /** API danger level (1–5) reduced by one, never below 0. */
 export function reduceModelLevel(modelLevel: number): number {
   const level = Number.isFinite(modelLevel) ? Math.round(modelLevel) : 0;
-  return Math.max(0, level - 1);
+  return Math.max(0, level);
 }
 
 /** Clamp the AI's news-based prediction to the allowed 0–2 integer range. */

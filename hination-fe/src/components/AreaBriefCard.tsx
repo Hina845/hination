@@ -167,12 +167,6 @@ export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, f
 
       <div className="area-brief__weather">
         <p className="area-brief__forecast-line">{forecastLine}</p>
-        {current && (
-          <p className="area-brief__now">
-            <span className="area-brief__now-label">Hiện tại {formatClock(current.time)}</span>
-            <span>{weatherCodeLabel(current.conditionCode)} · {current.temperatureC}°C · mưa {current.precipitationMm} mm · ẩm {current.humidityPct}%</span>
-          </p>
-        )}
         <ul className="area-brief__stats">
           <li><Thermometer weight="fill" /> {tMin}–{tMax}°C</li>
           <li><Drop weight="fill" /> {rain} mm</li>
