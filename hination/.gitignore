@@ -1,0 +1,40 @@
+node_modules/
+dist/
+.next/
+*.log
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Docker volumes (can be huge)
+postgres_data/
+redis_data/
+rabbitmq_data/
+
+# Build artifacts
+*.tgz
+*.tar.gz
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/

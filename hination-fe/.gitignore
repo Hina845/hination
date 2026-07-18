@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next
+/out
+
+# local application data
+/data/*.sqlite
+/data/*.sqlite-shm
+/data/*.sqlite-wal
+
+# environment files
+.env*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

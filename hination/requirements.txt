@@ -1,0 +1,12 @@
+# HINATION forecast API and scheduled data pipeline
+
+# API
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+
+# Forecast source
+requests>=2.31.0
+
+# Scheduler
+schedule>=1.2.2
