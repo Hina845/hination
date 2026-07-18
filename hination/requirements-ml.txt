@@ -1,32 +1,26 @@
 # ML dependencies for disaster prediction
 # Run: pip install -r requirements-ml.txt
 
-# Core ML (CPU - always installed)
-scikit-learn>=1.4.0
+# ============================================================
+# Inference / prediction API (runtime — always installed)
+# ============================================================
+# The trained model is a PyTorch multi-task network (models/disaster_nn.pt).
+# Inference needs only torch + numpy: the StandardScaler mean/scale are baked
+# into the checkpoint, so scikit-learn is NOT required to serve predictions.
+#
+# CPU wheels (default). For CUDA, install the matching build from pytorch.org.
+torch>=2.2.0
 numpy>=1.26.0
-joblib>=1.3.0
 
 # ============================================================
-# GPU acceleration (optional - install on GPU machine)
+# Training only (model/train_pytorch.py) — not needed to run predictions
 # ============================================================
-# Uncomment these on the GPU server (H100/A100/RTX):
-
-# RAPIDS cuML - GPU Random Forest (10-50x faster)
-# Requires CUDA 12.x + compatible GPU
-# pip install cuml-cu12
-
-# XGBoost with GPU support
-# pip install xgboost>=2.0.0
-
-# LightGBM with GPU support
-# pip install lightgbm --config-settings=cmake.define.USE_GPU=1
-
-# Earth Engine (for NASADEM terrain)
-# pip install earthengine-api
-# earthengine authenticate
+# scikit-learn provides StandardScaler + metrics during training; pandas builds
+# the training feature frame. Install these only on the box that (re)trains:
+#
+#   pip install scikit-learn>=1.4.0 pandas>=2.0.0
 
 # ============================================================
-# Detection: code will auto-detect what's available.
-# If no GPU libraries → CPU fallback (sklearn)
-# If GPU libraries present → uses cuML/XGBoost GPU automatically
+# GPU acceleration (optional)
 # ============================================================
+# Install the CUDA build of torch from https://pytorch.org for GPU inference.

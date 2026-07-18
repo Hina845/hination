@@ -18,7 +18,7 @@ else:
 from model.hourly_pipeline import run_pipeline
 
 
-MODEL_DIR = Path(os.getenv("HINATION_MODEL_DIR", "models/trained"))
+MODEL_DIR = Path(os.getenv("HINATION_MODEL_DIR", "models"))
 
 
 def refresh_forecasts() -> str:

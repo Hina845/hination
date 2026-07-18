@@ -493,77 +493,132 @@ def compute_wildfire_risk_heuristic(
 
 
 # ============================================================
-# ML Model Inference
+# Trained-Model Inference (PyTorch multi-task network)
 # ============================================================
+#
+# The authoritative predictor is the trained network in `models/disaster_nn.pt`
+# (see model/train_pytorch.py). It emits, per area per day:
+#   - disaster probability (thien_tai)
+#   - disaster type         (loai_thien_tai)
+#   - severity level 0-4    (cap_thien_tai)
+# The per-disaster heuristics below remain as (a) a diagnostic risk breakdown and
+# (b) a full fallback when the trained model / torch are unavailable.
 
-def load_trained_models(model_dir: Path) -> dict[str, Any] | None:
-    """Load trained models nếu có."""
-    model_path = model_dir / "trained_models.json"
-    if not model_path.exists():
-        return None
+from model.antecedent import fetch_antecedent_series, seeding_enabled  # noqa: E402
+from model.nn_inference import (  # noqa: E402
+    CAP_LABELS,
+    LOAI_LABELS,
+    LOAI_TO_DOMINANT,
+    build_daily_features,
+    load_predictor,
+)
 
-    with model_path.open() as f:
-        return json.load(f)
 
-
-def predict_with_ml(
-    model_info: dict[str, Any] | None,
-    features: dict[str, float],
-) -> float | None:
+def aggregate_daily_series(hours: list[dict[str, Any]]) -> tuple[dict[str, list[float]], list[int]]:
     """
-    Dự đoán risk bằng ML model.
-    
-    Nếu model không có → trả về None (sẽ dùng heuristic).
+    Collapse hourly forecast rows into the daily weather series the trained model
+    expects, matching how the training CSV was built (ml/train_from_csv.py):
+        rain        = daily precipitation sum
+        temperature = daily mean of temperature_2m
+        windspeed   = daily MAX of wind_speed_10m   (== wind_speed_10m_max)
+        humidity    = daily mean of relative humidity
+
+    Returns (series, day_offsets) where day_offsets[i] is the day_offset of row i.
     """
-    if not model_info:
-        return None
+    buckets: dict[int, dict[str, list[float]]] = {}
+    for h in hours:
+        day = int(h.get("day_offset", 0))
+        b = buckets.setdefault(day, {"rain": [], "temperature": [], "windspeed": [], "humidity": []})
+        b["rain"].append(float(h.get("precipitation", 0.0)))
+        b["temperature"].append(float(h.get("temperature_2m", 0.0)))
+        b["windspeed"].append(float(h.get("wind_speed_10m", 0.0)))
+        b["humidity"].append(float(h.get("humidity", 75.0)))
 
-    # Simplified: dùng feature importances như weights
-    # Trong production, nên dùng actual trained model (joblib)
-    importances = model_info.get("feature_importances", {})
-    threshold = model_info.get("optimal_threshold", 0.5)
+    day_offsets = sorted(buckets)
+    series: dict[str, list[float]] = {"rain": [], "temperature": [], "windspeed": [], "humidity": []}
+    for day in day_offsets:
+        b = buckets[day]
+        series["rain"].append(sum(b["rain"]))                                  # daily accumulation
+        series["temperature"].append(sum(b["temperature"]) / len(b["temperature"]))
+        series["windspeed"].append(max(b["windspeed"]))                        # daily max (matches training)
+        series["humidity"].append(sum(b["humidity"]) / len(b["humidity"]))
+    return series, day_offsets
 
-    if not importances:
-        return None
 
-    # Compute weighted sum
-    score = 0.0
-    for feat_name, importance in importances.items():
-        if feat_name in features:
-            score += importance * features[feat_name]
+def predict_area_days(
+    predictor: Any,
+    hours: list[dict[str, Any]],
+    seed_series: dict[str, list[float]] | None = None,
+) -> dict[int, dict[str, Any]]:
+    """
+    Run the trained model for one area and return a per-day-offset prediction map:
+        {day_offset: {"prob", "loai_idx", "cap_idx", "dominant", "type_label",
+                      "severity_label"}}
+    Returns {} if there is no usable trained predictor.
 
-    # Normalize
-    risk = min(1.0, max(0.0, score / sum(importances.values())))
+    `seed_series`, when provided, is ~30 days of observed daily weather that
+    precedes the forecast (see model/antecedent.py). It is prepended so the
+    7/14/30-day rolling features are populated with real antecedent context;
+    only the forecast days are returned.
+    """
+    if predictor is None:
+        return {}
 
-    return risk
+    series, day_offsets = aggregate_daily_series(hours)
+    if not day_offsets:
+        return {}
+
+    n_forecast = len(day_offsets)
+    if seed_series:
+        combined = {k: list(seed_series.get(k, [])) + list(series[k]) for k in series}
+    else:
+        combined = series
+
+    features = build_daily_features(combined)
+    result = predictor.predict(features)
+
+    # Forecast rows are the tail of the combined series (seed days lead).
+    base = features.shape[0] - n_forecast
+
+    predictions: dict[int, dict[str, Any]] = {}
+    for i, day in enumerate(day_offsets):
+        j = base + i
+        loai_idx = int(result["loai_idx"][j])
+        cap_idx = int(result["cap_idx"][j])
+        prob = float(result["disaster_prob"][j])
+        predictions[day] = {
+            "prob": prob,
+            "loai_idx": loai_idx,
+            "cap_idx": cap_idx,
+            "dominant": LOAI_TO_DOMINANT.get(loai_idx),
+            "type_label": LOAI_LABELS.get(loai_idx, "Không"),
+            "severity_label": CAP_LABELS.get(cap_idx, "Không"),
+        }
+    return predictions
 
 
 # ============================================================
-# Risk Calculation (Unified - ML + Heuristic)
+# Risk Calculation (Heuristic breakdown — per disaster type)
 # ============================================================
+
+def risk_to_level(risk: float) -> int:
+    """Map a 0-1 risk/probability onto the 1-5 VNDMS-style alert scale."""
+    return (
+        1 if risk < 0.2
+        else 2 if risk < 0.4
+        else 3 if risk < 0.6
+        else 4 if risk < 0.8
+        else 5
+    )
+
 
 def compute_flood_risk(
     precip_now: float,
     precip_24h: float,
     precip_72h: float,
     terrain: TerrainProfile,
-    ml_model: dict[str, Any] | None = None,
 ) -> float:
-    """Compute flood risk: ML model hoặc heuristic."""
-    # Try ML first
-    if ml_model:
-        features = {
-            "precip_1d": precip_now,
-            "precip_3d": precip_24h,
-            "precip_7d": precip_72h,
-            "soil_type_factor": SOIL_LANDSLIDE_FACTOR.get(terrain.soil_type, 0.5),
-            "river_proximity_km": terrain.river_proximity,
-        }
-        ml_risk = predict_with_ml(ml_model, features)
-        if ml_risk is not None:
-            return ml_risk
-
-    # Fallback: heuristic
+    """Heuristic flood risk (diagnostic breakdown)."""
     api_7d = precip_72h * 0.85  # Simplified API
     return compute_flood_risk_heuristic(
         precip_now, precip_24h, precip_72h, api_7d, terrain.terrain
@@ -573,27 +628,12 @@ def compute_flood_risk(
 def compute_landslide_risk(
     precip_7d: float,
     terrain: TerrainProfile,
-    ml_model: dict[str, Any] | None = None,
 ) -> float:
     """
-    Compute landslide risk.
-    
+    Heuristic landslide risk (diagnostic breakdown).
+
     ⚠️ QUAN TRỌNG: Giảm risk cho uncalibrated terrain.
     """
-    # Try ML first
-    if ml_model:
-        features = {
-            "precip_7d": precip_7d,
-            "slope_deg": terrain.slope,
-            "soil_type_factor": SOIL_LANDSLIDE_FACTOR.get(terrain.soil_type, 0.5),
-            "landslide_count_10y": terrain.landslide_history_count,
-            "twi": 8.0,  # Simplified
-        }
-        ml_risk = predict_with_ml(ml_model, features)
-        if ml_risk is not None:
-            return ml_risk
-
-    # Fallback: heuristic
     api_7d = precip_7d * 0.85
     return compute_landslide_risk_heuristic(
         precip_7d,
@@ -611,21 +651,8 @@ def compute_storm_risk(
     cloud_cover: float,
     pressure_hpa: float,
     pressure_prev: float,
-    ml_model: dict[str, Any] | None = None,
 ) -> float:
-    """Compute storm risk."""
-    # Try ML first
-    if ml_model:
-        features = {
-            "wind_gust_kmh": wind_gust,
-            "precip_1d": precip,
-            "cloud_cover": cloud_cover,
-        }
-        ml_risk = predict_with_ml(ml_model, features)
-        if ml_risk is not None:
-            return ml_risk
-
-    # Fallback: heuristic
+    """Heuristic storm risk (diagnostic breakdown)."""
     pressure_drop = max(0, pressure_prev - pressure_hpa)
     return compute_storm_risk_heuristic(wind_gust, pressure_drop, precip, cloud_cover)
 
@@ -665,21 +692,20 @@ def run_disaster_forecast(
     with forecast_path.open(encoding="utf-8") as f:
         gfs_data = json.load(f)
 
-    # Load ML models
-    model_dir = model_dir or Path("models/trained")
-    ml_models = load_trained_models(model_dir)
+    # Load trained PyTorch model (models/disaster_nn.pt)
+    model_dir = model_dir or Path("models")
+    predictor = load_predictor(model_dir)
 
-    if ml_models:
-        print(f"\n ML Models loaded from {model_dir}")
-        for name, model_info in ml_models.get("metrics", {}).items():
-            auc = model_info.get("test_auc", 0)
-            print(f"   {name}: AUC={auc:.3f}")
+    if predictor is not None:
+        print(f"\n Trained model loaded from {model_dir / 'disaster_nn.pt'}")
+        print(f"   Inputs: {predictor.meta['n_input']} features | backbone {predictor.meta['hidden_dims']}")
     else:
-        print(f"\n ML models not found - using heuristic rules")
+        print(f"\n Trained model not available - using heuristic rules")
 
     # Compute risks per commune
     disaster_forecast = {}
     alerts = []
+    seeded_count = 0
 
     for did, p in gfs_data["districts"].items():
         if did not in FORECAST_AREAS:
@@ -692,6 +718,18 @@ def run_disaster_forecast(
         precip_vals = [h["precipitation"] for h in hours]
         pressure_vals = [h.get("pressure", 1013) for h in hours]
 
+        # Seed with ~30 days of observed weather so rolling features are populated
+        seed_series = None
+        if predictor is not None and seeding_enabled() and hours:
+            seed_series = fetch_antecedent_series(
+                terrain.lat, terrain.lon, hours[0]["datetime"], area_id=did,
+            )
+            if seed_series:
+                seeded_count += 1
+
+        # Trained-model prediction per forecast day (empty dict -> heuristic only)
+        nn_by_day = predict_area_days(predictor, hours, seed_series)
+
         disaster_hours = []
 
         for i, h in enumerate(hours):
@@ -702,27 +740,11 @@ def run_disaster_forecast(
             # API (Antecedent Precipitation Index)
             api_7d = compute_api(precip_vals[max(0, i - 167): i + 1])
 
-            # Get models for this disaster type
-            flood_ml = ml_models.get("flood_model") if ml_models else None
-            landslide_ml = ml_models.get("landslide_model") if ml_models else None
-            storm_ml = ml_models.get("storm_model") if ml_models else None
-
-            # Compute risks
+            # Heuristic risk breakdown (per disaster type) — always computed
             flood_risk = compute_flood_risk(
-                h["precipitation"],
-                precip_24h,
-                precip_72h,
-                terrain,
-                flood_ml,
+                h["precipitation"], precip_24h, precip_72h, terrain,
             )
-
-            landslide_risk = compute_landslide_risk(
-                precip_72h,
-                terrain,
-                landslide_ml,
-            )
-
-            # Pressure drop (24h)
+            landslide_risk = compute_landslide_risk(precip_72h, terrain)
             pressure_prev = pressure_vals[i - 24] if i >= 24 else pressure_vals[i]
             storm_risk = compute_storm_risk(
                 h["wind_gusts_10m"],
@@ -730,9 +752,7 @@ def run_disaster_forecast(
                 h["cloud_cover"],
                 h.get("pressure", 1013),
                 pressure_prev,
-                storm_ml,
             )
-
             wildfire_risk = compute_wildfire_risk(
                 h["temperature_2m"],
                 h.get("humidity", 75),
@@ -740,24 +760,36 @@ def run_disaster_forecast(
                 precip_24h,
             )
 
-            # Alert level
-            max_risk = max(flood_risk, landslide_risk, storm_risk, wildfire_risk)
-            level = (
-                1 if max_risk < 0.2
-                else 2 if max_risk < 0.4
-                else 3 if max_risk < 0.6
-                else 4 if max_risk < 0.8
-                else 5
-            )
-
-            # Dominant disaster
             risks = {
                 "flood": flood_risk,
                 "landslide": landslide_risk,
                 "storm": storm_risk,
                 "wildfire": wildfire_risk,
             }
-            dominant = max(risks, key=risks.get)
+            heuristic_max = max(risks.values())
+            heuristic_dominant = max(risks, key=risks.get)
+
+            # Trained model drives overall risk / severity / dominant when available
+            nn_pred = nn_by_day.get(h["day_offset"])
+            if nn_pred is not None:
+                overall_risk = nn_pred["prob"]
+                # Alert level tracks BOTH heads: probability band and severity
+                # class (cap 0-4 -> 1-5). Whichever is more alarming wins, so
+                # level stays coherent with overall_risk.
+                level = max(risk_to_level(nn_pred["prob"]), nn_pred["cap_idx"] + 1)
+                dominant = nn_pred["dominant"] or heuristic_dominant
+                nn_block = {
+                    "disaster_probability": round(nn_pred["prob"], 3),
+                    "type": nn_pred["type_label"],
+                    "type_index": nn_pred["loai_idx"],
+                    "severity": nn_pred["cap_idx"],
+                    "severity_label": nn_pred["severity_label"],
+                }
+            else:
+                overall_risk = heuristic_max
+                level = risk_to_level(overall_risk)
+                dominant = heuristic_dominant
+                nn_block = None
 
             hour_disaster = {
                 "datetime": h["datetime"],
@@ -772,12 +804,14 @@ def run_disaster_forecast(
                     "storm": round(storm_risk, 3),
                     "wildfire": round(wildfire_risk, 3),
                 },
-                "overall_risk": round(max_risk, 3),
+                "overall_risk": round(overall_risk, 3),
                 "alert_level": level,
                 "dominant_disaster": dominant,
                 "message_vi": generate_vi_message(level, dominant, h, precip_24h),
                 "terrain_confidence": terrain.confidence,  # NEW: confidence
+                "nn": nn_block,  # NEW: trained-model prediction (None if heuristic)
             }
+            max_risk = overall_risk
 
             disaster_hours.append(hour_disaster)
 
@@ -819,17 +853,19 @@ def run_disaster_forecast(
         "forecastRunId": forecast_run_id or gfs_data.get("forecastRunId"),
         "generated_at": datetime.now().isoformat(),
         "model": "disaster_prediction_v2",
-        "method": "ML + ERA5 Baseline + SRTM Terrain + VNDMS",
-        "ml_models_loaded": ml_models is not None,
+        "method": "PyTorch multi-task NN + heuristic breakdown + SRTM Terrain + VNDMS",
+        "nn_model_loaded": predictor is not None,
+        "antecedent_seeded_areas": seeded_count,
         "forecast_horizon_hours": 168,
         "districts": disaster_forecast,
         "alerts": sorted(alerts, key=lambda x: -x["level"])[:50],
         "vndms_standards": VNDMS,
         "methodology": {
-            "flood": "ML/RF or heuristic: precip + accumulations + API + terrain",
-            "landslide": "ML/RF or heuristic: slope + soil + API + history (confidence-adjusted)",
-            "storm": "ML/GB or heuristic: wind + precip + pressure + clouds",
-            "wildfire": "heuristic: temp + humidity + wind + dry days",
+            "overall": "trained PyTorch multi-task NN (thien_tai/loai/cap) when available, else heuristic max",
+            "flood": "heuristic breakdown: precip + accumulations + API + terrain",
+            "landslide": "heuristic breakdown: slope + soil + API + history (confidence-adjusted)",
+            "storm": "heuristic breakdown: wind + precip + pressure + clouds",
+            "wildfire": "heuristic breakdown: temp + humidity + wind + dry days",
         },
     }
 
@@ -864,7 +900,8 @@ def run_disaster_forecast(
     print(f"\n Saved: {output_path}")
     print(f"{'=' * 70}")
     print(f" DISASTER FORECAST v2 COMPLETE")
-    print(f"  ML Models: {'Loaded' if ml_models else 'Not available (heuristic)'}")
+    print(f"  Trained model: {'Loaded' if predictor is not None else 'Not available (heuristic)'}")
+    print(f"  Antecedent-seeded areas: {seeded_count}/{len(disaster_forecast)}")
     print(f"  Terrains: calibrated={sum(1 for d in disaster_forecast.values() if d['terrain']['profile_source']=='calibrated')} | "
           f"derived={sum(1 for d in disaster_forecast.values() if d['terrain']['profile_source']!='calibrated')}")
     print(f"{'=' * 70}")
