@@ -24,7 +24,7 @@ export function LoginForm() {
         </label>
         <input
           autoComplete="username"
-          className="h-[42px] w-full rounded-[9px] border border-[#afafaf] bg-white px-[13px] text-xs text-[#333] shadow-[inset_0_1px_1px_rgb(0_0_0_/_3%)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#777] focus:border-[#5d5d5d] focus:shadow-[0_0_0_3px_rgb(61_61_61_/_12%)]"
+          className="h-[42px] w-full rounded-[9px] border border-[#afafaf] bg-white px-[13px] text-base text-[#333] shadow-[inset_0_1px_1px_rgb(0_0_0_/_3%)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#777] focus:border-[#5d5d5d] focus:shadow-[0_0_0_3px_rgb(61_61_61_/_12%)]"
           id="username"
           name="username"
           placeholder="Username"
@@ -38,7 +38,7 @@ export function LoginForm() {
         <div className="relative">
           <input
             autoComplete="current-password"
-            className="h-[42px] w-full rounded-[9px] border border-[#afafaf] bg-white py-0 pr-[45px] pl-[13px] text-xs text-[#333] shadow-[inset_0_1px_1px_rgb(0_0_0_/_3%)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#777] focus:border-[#5d5d5d] focus:shadow-[0_0_0_3px_rgb(61_61_61_/_12%)]"
+            className="h-[42px] w-full rounded-[9px] border border-[#afafaf] bg-white py-0 pr-[45px] pl-[13px] text-base text-[#333] shadow-[inset_0_1px_1px_rgb(0_0_0_/_3%)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#777] focus:border-[#5d5d5d] focus:shadow-[0_0_0_3px_rgb(61_61_61_/_12%)]"
             id="password"
             name="password"
             placeholder="Password"
@@ -56,12 +56,12 @@ export function LoginForm() {
         </div>
       </div>
 
-      <p aria-live="polite" className="mt-2 min-h-[34px] text-[11px] leading-[1.35] text-[#a33d3d]" role="status">
+      <p aria-live="polite" className="mt-2 min-h-[34px] text-base leading-[1.35] text-[#a33d3d]" role="status">
         {state.error}
       </p>
 
       <button
-        className="mx-auto block h-[28px] w-full cursor-pointer rounded-[18px] border-0 bg-[#777] text-[11px] font-semibold text-white shadow-[0_1px_1px_rgb(0_0_0_/_14%)] transition-[background-color,transform,opacity] duration-150 hover:not-disabled:-translate-y-px hover:not-disabled:bg-[#565656] focus-visible:outline-3 focus-visible:outline-[#3d3d3d]/25 focus-visible:outline-offset-3 disabled:cursor-wait disabled:opacity-70"
+        className="mx-auto block h-12 w-full cursor-pointer rounded-full border-0 bg-[#777] text-base font-semibold text-white shadow-[0_1px_1px_rgb(0_0_0_/_14%)] transition-[background-color,transform,opacity] duration-150 hover:not-disabled:-translate-y-px hover:not-disabled:bg-[#565656] focus-visible:outline-3 focus-visible:outline-[#3d3d3d]/25 focus-visible:outline-offset-3 disabled:cursor-wait disabled:opacity-70"
         disabled={isPending}
         type="submit"
       >

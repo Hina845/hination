@@ -1,0 +1,99 @@
+# ===========================================================================
+# HINATION — production stack.
+#
+#   Bring the whole stack up (builds all images in parallel, then runs):
+#       docker compose up --build -d
+#
+#   Optionally also run the hourly forecast refresher:
+#       docker compose --profile scheduler up --build -d
+#
+# Ports:  nginx 80  |  frontend 1111  |  backend 1112
+# ===========================================================================
+name: hination
+
+services:
+  # ---- FastAPI forecast API (Python) -----------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: hination-backend
+    environment:
+      HINATION_PREDICTIONS_DIR: /app/hination/data/predictions
+      HINATION_USE_V2_MODEL: "true"
+    volumes:
+      - backend-data:/app/hination/data
+    ports:
+      - "1112:1112"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:1112/healthz').getcode()==200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ---- Next.js frontend -------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: hination-frontend
+    environment:
+      NODE_ENV: production
+      # Reach the backend over the internal Docker network.
+      HINATION_API_BASE_URL: http://backend:1112
+      # Optional runtime integrations — set these in a root .env file to enable.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
+      BRAVE_SEARCH_BASE_URL: ${BRAVE_SEARCH_BASE_URL:-}
+      BRAVE_SEARCH_COUNTRY: ${BRAVE_SEARCH_COUNTRY:-}
+      HINATION_TILE_URL: ${HINATION_TILE_URL:-}
+      AREA_BRIEF_TTL_MINUTES: ${AREA_BRIEF_TTL_MINUTES:-}
+    volumes:
+      - frontend-data:/app/hination-fe/data
+    ports:
+      - "1111:1111"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ---- Nginx reverse proxy (public entrypoint) -------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  # ---- Hourly forecast refresher (opt-in: --profile scheduler) ---------
+  scheduler:
+    image: hination-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["python", "-m", "model.scheduler"]
+    environment:
+      HINATION_PREDICTIONS_DIR: /app/hination/data/predictions
+      HINATION_USE_V2_MODEL: "true"
+    volumes:
+      - backend-data:/app/hination/data
+    depends_on:
+      - backend
+    restart: unless-stopped
+    profiles:
+      - scheduler
+
+volumes:
+  backend-data:
+  frontend-data:

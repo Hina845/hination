@@ -13,10 +13,14 @@ export type DailyWeather = {
 export type DailyDanger = {
   peakTime: string;
   overallRisk: number;
-  level: DangerLevel;
+  level: DangerLevel; // raw API level (1–5); still what the AI brief request is keyed on
   dominantDisaster: DisasterType;
   risks: Record<"flood" | "landslide" | "storm" | "wildfire", number>;
   message: string;
+  // Injected server-side (see app/app/page.tsx). `overallLevel` = (level − 1) + AI
+  // news prediction (0–2), capped at 5, and drives all map coloring/labels.
+  overallLevel?: number;
+  predictLevel?: number; // AI news-based prediction, 0–2 (0 when not yet warmed)
 };
 export type ForecastArea = {
   id: string;

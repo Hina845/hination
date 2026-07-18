@@ -3,13 +3,25 @@
 import { Pause, Play } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
+import { DANGEROUS_LEVEL, VI_WEEKDAYS } from "@/components/map-theme";
 import type { ForecastDay } from "@/types/forecast";
 
-const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-
-export default function TimelineDock({ days, selected, onSelect }: { days: ForecastDay[]; selected: number; onSelect: (index: number) => void }) {
+export default function TimelineDock({
+  days,
+  selected,
+  onSelect,
+  peakLabel,
+  dangerous,
+}: {
+  days: ForecastDay[];
+  selected: number;
+  onSelect: (index: number) => void;
+  peakLabel?: string | null;
+  dangerous?: boolean;
+}) {
   const [playing, setPlaying] = useState(false);
   const progress = days.length > 0 ? ((selected + 1) / days.length) * 100 : 0;
+  const tipLeft = days.length > 0 ? ((selected + 0.5) / days.length) * 100 : 0;
 
   useEffect(() => {
     if (!playing) return;
@@ -36,26 +48,39 @@ export default function TimelineDock({ days, selected, onSelect }: { days: Forec
         {playing ? <Pause weight="fill" /> : <Play weight="fill" />}
       </button>
       <div className="timeline-panel">
+        {peakLabel && (
+          <div
+            className={`timeline-tip${dangerous ? " timeline-tip--danger" : ""}`}
+            style={{ left: `${tipLeft}%` }}
+            role="status"
+            aria-live="polite"
+          >
+            {peakLabel}
+          </div>
+        )}
         <div className="timeline-progress" role="progressbar" aria-label="Tiến độ dự báo" aria-valuemin={1} aria-valuemax={days.length} aria-valuenow={selected + 1}>
           <span style={{ width: `${progress}%` }} />
         </div>
         <div className="timeline-days" role="tablist" aria-label="Chọn ngày dự báo">
           {days.map((day, index) => {
             const date = new Date(`${day.date}T00:00:00+07:00`);
-            const weekday = WEEKDAYS[date.getDay()];
-            const dayOfMonth = date.toLocaleDateString("vi-VN", { day: "2-digit" });
+            const weekday = VI_WEEKDAYS[date.getDay()];
+            const dayOfMonth = date.getDate();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const isDangerous = day.maximumAlertLevel >= DANGEROUS_LEVEL;
             return (
               <button
                 key={day.date}
                 type="button"
                 role="tab"
                 aria-selected={selected === index}
-                aria-label={`${weekday} ${dayOfMonth}-${date.toLocaleDateString("vi-VN", { month: "2-digit" })}, cảnh báo cấp ${day.maximumAlertLevel}`}
-                className="day-button"
+                aria-label={`${weekday} ${dayOfMonth} tháng ${month}, cảnh báo cấp ${day.maximumAlertLevel}${isDangerous ? " (nguy hiểm)" : ""}`}
+                className={`day-button${isDangerous ? " day-button--danger" : ""}`}
                 onClick={() => onSelect(index)}
               >
                 <span className="day-weekday">{weekday}</span>
                 <span className="day-date">{dayOfMonth}</span>
+                {isDangerous && <span className="day-danger-dot" aria-hidden />}
               </button>
             );
           })}

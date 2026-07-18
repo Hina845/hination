@@ -1,0 +1,67 @@
+# ===========================================================================
+# Build-context ignore for the hination monorepo (shared by both images).
+# Keeps images small and builds fast by excluding everything not needed to run.
+# ===========================================================================
+
+# --- VCS / tooling -------------------------------------------------------
+.git
+.gitignore
+.claude
+CONTEXT.md
+**/.vscode
+**/.idea
+**/*.swp
+
+# --- Docker assets themselves -------------------------------------------
+docker-compose.yml
+Dockerfile.*
+.dockerignore
+nginx/
+
+# --- Node / Next.js (hination-fe) ---------------------------------------
+**/node_modules
+**/.pnpm-store
+**/.next
+**/out
+**/dist
+**/build
+**/*.tsbuildinfo
+hination-fe/next-env.d.ts
+
+# --- Python (hination) --------------------------------------------------
+**/__pycache__
+**/*.py[cod]
+**/*$py.class
+**/.venv
+**/venv
+**/env
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/htmlcov
+
+# --- Tests (not shipped to production) ----------------------------------
+hination/tests
+hination-fe/**/*.test.ts
+hination-fe/**/*.test.tsx
+hination-fe/vitest.config.ts
+
+# --- Logs / temp / crash dumps ------------------------------------------
+**/*.log
+**/logs
+**/tmp
+**/temp
+**/*.tmp
+**/*.stackdump
+hination/.tmp-*.log
+output/
+
+# --- Environment / secrets (provided at runtime, never baked) -----------
+**/.env
+**/.env.*
+!**/.env.example
+
+# --- OS junk ------------------------------------------------------------
+.DS_Store
+Thumbs.db

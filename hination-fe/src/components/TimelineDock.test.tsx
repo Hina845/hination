@@ -51,7 +51,7 @@ describe("forecast playback", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Phát dự báo" }));
     act(() => vi.advanceTimersByTime(2000));
-    fireEvent.click(screen.getByRole("tab", { name: /T4.*22-07/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /22 tháng 07/ }));
     expect(screen.getByTestId("selected")).toHaveTextContent("4");
     act(() => vi.advanceTimersByTime(2999));
     expect(screen.getByTestId("selected")).toHaveTextContent("4");
