@@ -2,7 +2,7 @@
 
 > **AI-powered, sub-regional weather & disaster early-warning for Điện Biên province** — delivering the right information, to the right people, at the right time, in a form everyone can understand.
 
-HINATION turns raw weather data into **commune-level risk forecasts** and **plain-language warnings with concrete actions**, presented on a color-coded map that a villager who does not read technical bulletins can still understand at a glance.
+HINATION turns raw weather data into **commune-level risk forecasts** and **plain-language warnings with concrete actions**, presented on a color-coded map built for the **village chief / commune official** — who reads the danger in seconds and broadcasts it to residents by **loudspeaker and SMS**, reaching everyone even where the internet doesn't.
 
 ---
 
@@ -23,7 +23,38 @@ Today, forecast information has four gaps:
 
 ---
 
-## 2. What HINATION delivers
+## 2. The key insight: the last mile
+
+The hardest part of disaster warning in the highlands is **not the forecast — it's getting it to people who will act on it.** Điện Biên's reality forces this to the front:
+
+- **Residents don't (and won't) use a forecast app.** Most highland villagers won't install, learn, or open a dashboard — many aren't comfortable with smartphones or don't read technical text. Building "an app for residents" quietly assumes an audience that isn't there.
+- **The internet often isn't there either.** In mountainous communes, connectivity is intermittent or absent. A warning that requires every resident to be online, right now, will not arrive.
+
+**So HINATION does not try to push a dashboard onto residents. It equips the person who is already trusted to warn the village — the village chief / commune official — and lets them relay.**
+
+```
+   HINATION dashboard              The relay (village chief)            The village
+ ┌───────────────────────┐      ┌───────────────────────────┐      ┌────────────────────┐
+ │ Map + color danger     │      │ Reads the situation in     │      │ Loudspeaker         │
+ │ scale + "what to do"   │─────►│ seconds, decides, acts:    │─────►│ announcement        │
+ │ + one-click SMS        │      │  • public loudspeaker      │      │ (reaches everyone,  │
+ │                        │      │  • emergency SMS blast     │      │  no phone needed)   │
+ │ (one connected device, │      │  • door-to-door / Zalo     │      │ SMS to households   │
+ │  the chief's)          │      │                            │      │ → villagers prepare │
+ └───────────────────────┘      └───────────────────────────┘      └────────────────────┘
+```
+
+**Why this works:**
+
+- **Only one device needs connectivity** — the chief's. The village doesn't need the internet; the **loudspeaker reaches everyone, including people with no phone at all.**
+- **The chief is a fast decision-maker, not a data analyst.** The dashboard is tuned for a 5-second read (color + icon + one action line), so the chief can *immediately* fire a loudspeaker announcement or an SMS blast about the upcoming disaster and let every household prepare.
+- **It uses trust that already exists.** People act on their chief's word — a channel far stronger than a notification from an unfamiliar app.
+
+This "**dashboard for the chief → broadcast to the village**" model is the design decision that makes every other feature useful.
+
+---
+
+## 3. What HINATION delivers
 
 Mapped directly to the required outcomes:
 
@@ -33,17 +64,18 @@ Instead of one provincial number, HINATION produces a **7-day, hour-by-hour fore
 ### ✅ Early warnings with concrete actions
 When a dangerous-weather threshold is exceeded (heavy rain, frost, flash flood, storm), the system **automatically raises an alert** and generates a **short, plain-language bulletin telling residents and officials what to do** — not just a risk number. Alerts follow Vietnam's national standard (**Quyết định 18/2021/QĐ-TTg**) and a simple **5-level danger scale**.
 
-### ✅ Multi-channel & multilingual (by design)
-- **Villager registry + one-click emergency SMS** to everyone in a commune (built into the Manage screen).
-- Architecture is channel-agnostic — **Zalo, SMS and public-loudspeaker** distribution plug into the same warning engine.
+### ✅ Multi-channel & multilingual — built for the relay
+The chief turns one on-screen warning into a village-wide broadcast:
+- **Villager registry + one-click emergency SMS** to every household in the commune (built into the Manage screen).
+- Architecture is channel-agnostic — **public loudspeaker, SMS and Zalo** plug into the same warning engine, so the message reaches people **whether or not they have a phone or the internet.**
 - Bulletins are generated in **Vietnamese** today, with **local-language conversion (Thái, Mông/Hmong)** on the roadmap for ethnic-minority areas.
 
-### ✅ Intuitive interface for residents
-The main screen is an **interactive map, not a table of numbers**. Each commune is a colored dot on a **green → red danger scale**, with **icons for the disaster type** (flood, landslide, storm, wildfire, strong wind) and short "việc cần làm" (what to do) text. A resident who cannot read a meteorological forecast still understands the danger level from the color alone.
+### ✅ Intuitive interface — a 5-second read for the village chief
+The dashboard is designed for the **commune official / village chief**, not for individual residents. The main screen is an **interactive map, not a table of numbers**: each commune is a colored dot on a **green → red danger scale**, with **icons for the disaster type** (flood, landslide, storm, wildfire, strong wind) and a short "việc cần làm" (what to do) line. The chief grasps the situation at a glance and can act — loudspeaker or SMS — within seconds, no meteorological training required.
 
 ---
 
-## 3. The idea / how it works
+## 4. The idea / how it works
 
 HINATION combines a **physics- and data-driven risk model** with an **AI news layer**, then presents the result visually.
 
@@ -81,7 +113,7 @@ The two are merged into a single **overall danger level** shown on the map, so t
 
 ---
 
-## 4. Tech stack
+## 5. Tech stack
 
 | Layer | Technology | Role |
 |---|---|---|
@@ -103,18 +135,18 @@ The trained disaster network reaches **AUC ≈ 0.82** on disaster detection, wit
 
 ---
 
-## 5. Meeting the minimum submission requirements
+## 6. Meeting the minimum submission requirements
 
 | Requirement | Where it's demonstrated |
 |---|---|
 | **3–7 day forecast for ≥3 locations** | 7-day hourly forecast for **all 45 communes** (well beyond 3), served at `GET /api/v1/forecasts/latest` and rendered on the map. |
 | **Automatic warning on threshold breach** | Risk engine raises **alert levels 1–5** per VNDMS QĐ 18/2021 thresholds and auto-generates a bulletin the moment a threshold is crossed. |
-| **Simple interface for non-experts** | Map with **color scale + disaster icons + plain "what to do" text**; danger legend (An toàn → Rất cao). |
+| **Simple interface for non-experts** | Chief-facing map with **color scale + disaster icons + plain "what to do" text** (danger legend An toàn → Rất cao), designed as a 5-second read that drives an immediate loudspeaker/SMS broadcast to residents. |
 | **Architecture doc** | This README + the detailed engineering guide in [`hination/README.md`](hination/README.md) and domain glossary in [`CONTEXT.md`](CONTEXT.md). |
 
 ---
 
-## 6. Running the demo
+## 7. Running the demo
 
 **Full stack (recommended):**
 ```bash
@@ -143,7 +175,7 @@ See [`hination/README.md`](hination/README.md) for the full engineering referenc
 
 ---
 
-## 7. Deployment roadmap
+## 8. Deployment roadmap
 
 - **Now:** 45-commune 7-day forecast · 5-level auto-warnings · interactive map · AI bulletins · villager SMS registry · Dockerized stack.
 - **Next:** wire a live SMS gateway + **Zalo Official Account**; **loudspeaker/TTS** audio bulletins; **Thái & Mông/Hmong** translation of warnings.
@@ -151,7 +183,7 @@ See [`hination/README.md`](hination/README.md) for the full engineering referenc
 
 ---
 
-## 8. Repository layout
+## 9. Repository layout
 
 ```
 hination/          Python backend — forecast API, disaster model, data pipelines, scheduler
