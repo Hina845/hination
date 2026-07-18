@@ -138,7 +138,12 @@ def combine_forecasts(weather: dict[str, Any], danger: dict[str, Any], now: date
             start, end = day_index * 24, (day_index + 1) * 24
             day_weather = weather_hours[start:end]
             day_danger = danger_hours[start:end]
+            
+            # Find peak danger hour
             peak = max(day_danger, key=lambda item: _number(item.get("overall_risk"), "overall_risk"))
+            peak_hour_offset = int(peak.get("hour_offset", 0)) - 1  # Convert to 0-based index
+            peak_weather = day_weather[peak_hour_offset] if peak_hour_offset < len(day_weather) else day_weather[0]
+            
             risks = peak.get("risks")
             if not isinstance(risks, dict):
                 raise ForecastDataError("FORECAST_INCOMPATIBLE", f"Missing risks for {area_id}")
@@ -151,6 +156,11 @@ def combine_forecasts(weather: dict[str, Any], danger: dict[str, Any], now: date
             coords = danger_area.get("coordinates") or weather_area.get("coordinates")
             if not isinstance(coords, dict):
                 raise ForecastDataError("FORECAST_INCOMPATIBLE", f"Missing coordinates for {area_id}")
+            
+            # Compute weather aggregates from the peak hour (not from first hour)
+            precip_at_peak = _number(peak_weather.get("precipitation", 0), "precipitation")
+            precip_24h = sum(_number(h.get("precipitation"), "precipitation") for h in day_weather)
+            
             areas.append(
                 {
                     "id": area_id,
@@ -160,10 +170,14 @@ def combine_forecasts(weather: dict[str, Any], danger: dict[str, Any], now: date
                     "weather": {
                         "temperatureMinC": round(min(_number(h.get("temperature_2m"), "temperature") for h in day_weather), 1),
                         "temperatureMaxC": round(max(_number(h.get("temperature_2m"), "temperature") for h in day_weather), 1),
-                        "rainfallTotalMm": round(sum(_number(h.get("precipitation"), "precipitation") for h in day_weather), 2),
+                        "rainfallTotalMm": round(precip_24h, 2),
                         "windGustMaxKmh": round(max(_number(h.get("wind_gusts_10m"), "wind gust") for h in day_weather), 1),
                         "humidityAveragePct": round(sum(_number(h.get("humidity"), "humidity") for h in day_weather) / 24, 1),
                         "cloudCoverAveragePct": round(sum(_number(h.get("cloud_cover"), "cloud cover") for h in day_weather) / 24, 1),
+                        # Weather at peak danger time
+                        "precipitationAtPeakMm": round(precip_at_peak, 2),
+                        "temperatureAtPeakC": round(_number(peak_weather.get("temperature_2m"), "temperature"), 1),
+                        "windGustAtPeakKmh": round(_number(peak_weather.get("wind_gusts_10m"), "wind gust"), 1),
                     },
                     "danger": {
                         "peakTime": str(peak.get("datetime")),

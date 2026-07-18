@@ -15,9 +15,7 @@ const globalForDatabase = globalThis as typeof globalThis & {
 
 export const db = globalForDatabase.hinationDatabase ?? new Database(databasePath);
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDatabase.hinationDatabase = db;
-}
+globalForDatabase.hinationDatabase = db;
 
 db.pragma("journal_mode = WAL");
 db.exec(`
@@ -71,9 +69,13 @@ db.exec(`
 
 // Migration: `predict_level` (AI news-based danger prediction, 0–2) was added after
 // the table shipped. ADD COLUMN is a no-op-safe guard behind a table_info check.
-const briefColumns = db.prepare("PRAGMA table_info(area_briefs)").all() as { name: string }[];
-if (!briefColumns.some((column) => column.name === "predict_level")) {
-  db.exec("ALTER TABLE area_briefs ADD COLUMN predict_level INTEGER NOT NULL DEFAULT 0");
+try {
+  const briefColumns = db.prepare("PRAGMA table_info(area_briefs)").all() as { name: string }[];
+  if (!briefColumns.some((column) => column.name === "predict_level")) {
+    db.exec("ALTER TABLE area_briefs ADD COLUMN predict_level INTEGER NOT NULL DEFAULT 0");
+  }
+} catch {
+  // Column may already exist in older databases
 }
 
 db.prepare("INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)").run(

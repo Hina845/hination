@@ -517,31 +517,47 @@ from model.nn_inference import (  # noqa: E402
 def aggregate_daily_series(hours: list[dict[str, Any]]) -> tuple[dict[str, list[float]], list[int]]:
     """
     Collapse hourly forecast rows into the daily weather series the trained model
-    expects, matching how the training CSV was built (ml/train_from_csv.py):
+    expects, matching how the training CSV was built:
         rain        = daily precipitation sum
         temperature = daily mean of temperature_2m
-        windspeed   = daily MAX of wind_speed_10m   (== wind_speed_10m_max)
+        windspeed   = daily MAX of wind_speed_10m
         humidity    = daily mean of relative humidity
+        wind_gusts  = daily MAX of wind_gusts_10m
+        pressure    = daily mean of surface_pressure
+        cloud_cover = daily mean of cloud_cover
 
     Returns (series, day_offsets) where day_offsets[i] is the day_offset of row i.
     """
     buckets: dict[int, dict[str, list[float]]] = {}
     for h in hours:
         day = int(h.get("day_offset", 0))
-        b = buckets.setdefault(day, {"rain": [], "temperature": [], "windspeed": [], "humidity": []})
+        b = buckets.setdefault(day, {
+            "rain": [], "temperature": [], "windspeed": [], "humidity": [],
+            "wind_gusts": [], "pressure": [], "cloud_cover": []
+        })
+        # Map GFS column names to model feature names
         b["rain"].append(float(h.get("precipitation", 0.0)))
         b["temperature"].append(float(h.get("temperature_2m", 0.0)))
         b["windspeed"].append(float(h.get("wind_speed_10m", 0.0)))
         b["humidity"].append(float(h.get("humidity", 75.0)))
+        b["wind_gusts"].append(float(h.get("wind_gusts_10m", 0.0)))
+        b["pressure"].append(float(h.get("pressure", 1013.0)))
+        b["cloud_cover"].append(float(h.get("cloud_cover", 50.0)))
 
     day_offsets = sorted(buckets)
-    series: dict[str, list[float]] = {"rain": [], "temperature": [], "windspeed": [], "humidity": []}
+    series: dict[str, list[float]] = {
+        "rain": [], "temperature": [], "windspeed": [], "humidity": [],
+        "wind_gusts": [], "pressure": [], "cloud_cover": []
+    }
     for day in day_offsets:
         b = buckets[day]
         series["rain"].append(sum(b["rain"]))                                  # daily accumulation
         series["temperature"].append(sum(b["temperature"]) / len(b["temperature"]))
-        series["windspeed"].append(max(b["windspeed"]))                        # daily max (matches training)
+        series["windspeed"].append(max(b["windspeed"]))                        # daily max
         series["humidity"].append(sum(b["humidity"]) / len(b["humidity"]))
+        series["wind_gusts"].append(max(b["wind_gusts"]))                      # daily max gusts
+        series["pressure"].append(sum(b["pressure"]) / len(b["pressure"]))      # daily mean pressure
+        series["cloud_cover"].append(sum(b["cloud_cover"]) / len(b["cloud_cover"]))  # daily mean
     return series, day_offsets
 
 
