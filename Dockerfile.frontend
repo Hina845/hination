@@ -17,7 +17,14 @@ RUN corepack enable
 
 # Install dependencies first so this layer caches across source-only changes.
 COPY hination-fe/package.json hination-fe/pnpm-lock.yaml hination-fe/pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+# Slow/flaky registries: raise retries & timeouts, lower concurrency so a single
+# stalled tarball doesn't abort the whole install.
+RUN pnpm config set fetch-retries 8 \
+    && pnpm config set fetch-retry-mintimeout 20000 \
+    && pnpm config set fetch-retry-maxtimeout 180000 \
+    && pnpm config set fetch-timeout 600000 \
+    && pnpm config set network-concurrency 4 \
+    && pnpm install --frozen-lockfile
 
 # Build the app (output: "standalone" -> .next/standalone).
 COPY hination-fe/ ./
