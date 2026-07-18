@@ -20,6 +20,11 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 db.pragma("journal_mode = WAL");
+// Default busy timeout is 0, so a writer that finds the file locked throws SQLITE_BUSY
+// immediately. During `next build` the 8 parallel page-data workers each open this file
+// and write (migration + admin seed) at import time; without a timeout they collide.
+// Wait up to 5s for the lock instead of failing.
+db.pragma("busy_timeout = 5000");
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
