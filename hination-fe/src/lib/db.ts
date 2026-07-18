@@ -68,14 +68,19 @@ db.exec(`
 `);
 
 // Migration: `predict_level` (AI news-based danger prediction, 0–2) was added after
-// the table shipped. ADD COLUMN is a no-op-safe guard behind a table_info check.
-try {
-  const briefColumns = db.prepare("PRAGMA table_info(area_briefs)").all() as { name: string }[];
-  if (!briefColumns.some((column) => column.name === "predict_level")) {
+// the table shipped. The table_info check skips the common already-migrated case, but
+// during a production build the 8 parallel page-data workers each open this same file
+// with no shared connection cache, so two can pass the check and both ALTER — the loser
+// throws "duplicate column name". Swallow exactly that error; re-throw anything else.
+const briefColumns = db.prepare("PRAGMA table_info(area_briefs)").all() as { name: string }[];
+if (!briefColumns.some((column) => column.name === "predict_level")) {
+  try {
     db.exec("ALTER TABLE area_briefs ADD COLUMN predict_level INTEGER NOT NULL DEFAULT 0");
+  } catch (error) {
+    if (!(error instanceof Error && /duplicate column name/i.test(error.message))) {
+      throw error;
+    }
   }
-} catch {
-  // Column may already exist in older databases
 }
 
 db.prepare("INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)").run(
