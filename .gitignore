@@ -56,6 +56,16 @@ htmlcov/
 hination/data/predictions/*.json
 
 # ---------------------------------------------------------------------------
+# ML models / trained weights (generated during training)
+# ---------------------------------------------------------------------------
+hination/models/trained/*.json
+hination/models/trained/*.joblib
+hination/data/features/*.json
+hination/data/raw/era5/*.json
+hination/data/raw/terrain/*.json
+hination/data/raw/disasters/*.json
+
+# ---------------------------------------------------------------------------
 # Test / tooling artifacts (Playwright, screenshots)
 # ---------------------------------------------------------------------------
 .playwright-cli/

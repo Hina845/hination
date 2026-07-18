@@ -1,0 +1,32 @@
+# ML dependencies for disaster prediction
+# Run: pip install -r requirements-ml.txt
+
+# Core ML (CPU - always installed)
+scikit-learn>=1.4.0
+numpy>=1.26.0
+joblib>=1.3.0
+
+# ============================================================
+# GPU acceleration (optional - install on GPU machine)
+# ============================================================
+# Uncomment these on the GPU server (H100/A100/RTX):
+
+# RAPIDS cuML - GPU Random Forest (10-50x faster)
+# Requires CUDA 12.x + compatible GPU
+# pip install cuml-cu12
+
+# XGBoost with GPU support
+# pip install xgboost>=2.0.0
+
+# LightGBM with GPU support
+# pip install lightgbm --config-settings=cmake.define.USE_GPU=1
+
+# Earth Engine (for NASADEM terrain)
+# pip install earthengine-api
+# earthengine authenticate
+
+# ============================================================
+# Detection: code will auto-detect what's available.
+# If no GPU libraries → CPU fallback (sklearn)
+# If GPU libraries present → uses cuML/XGBoost GPU automatically
+# ============================================================
