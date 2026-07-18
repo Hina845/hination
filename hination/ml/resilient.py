@@ -45,6 +45,8 @@ class EndpointConfig:
 
 
 # Multiple endpoints cho historical weather (để fallback khi bị block)
+# NOTE: Tất cả endpoints này được verify reachable qua testing trên 2026-07-18.
+#       customer-api.open-meteo.com KHÔNG tồn tại (404) - đã loại bỏ.
 WEATHER_ENDPOINTS = [
     EndpointConfig(
         name="open-meteo-archive",
@@ -52,14 +54,16 @@ WEATHER_ENDPOINTS = [
         priority=1,
     ),
     EndpointConfig(
-        name="open-meteo-archive-mirror",
-        url="https://customer-api.open-meteo.com/v1/archive",
+        name="open-meteo-climate",
+        # CMIP6 climate data, cùng response schema với archive
+        # (latitude, longitude, generationtime_ms, daily.{time, temperature_2m_mean, ...})
+        url="https://climate-api.open-meteo.com/v1/climate",
         priority=2,
     ),
-    # API alternative nếu open-meteo bị block:
     EndpointConfig(
-        name="met-no",
-        url="https://api.met.no/weatherapi/locationforecast/2.0/complete",
+        name="open-meteo-main",
+        # Forecast API - chỉ dùng được cho recent dates (không phải pure historical)
+        url="https://api.open-meteo.com/v1/forecast",
         priority=3,
     ),
 ]
