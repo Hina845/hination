@@ -47,26 +47,38 @@ class EndpointConfig:
 # Multiple endpoints cho historical weather (để fallback khi bị block)
 # NOTE: Tất cả endpoints này được verify reachable qua testing trên 2026-07-18.
 #       customer-api.open-meteo.com KHÔNG tồn tại (404) - đã loại bỏ.
-WEATHER_ENDPOINTS = [
+# CRITICAL: open-meteo-main (forecast API) chỉ dùng cho dates gần đây,
+#           KHÔNG dùng cho historical data (2015-01-01 → 2015-02-01 sẽ fail 400)
+WEATHER_ENDPOINTS_HISTORICAL = [
     EndpointConfig(
         name="open-meteo-archive",
         url="https://archive-api.open-meteo.com/v1/archive",
         priority=1,
+        rate_limit_rpm=30,  # Conservative to avoid 429
+        timeout=60.0,
     ),
     EndpointConfig(
         name="open-meteo-climate",
-        # CMIP6 climate data, cùng response schema với archive
-        # (latitude, longitude, generationtime_ms, daily.{time, temperature_2m_mean, ...})
         url="https://climate-api.open-meteo.com/v1/climate",
         priority=2,
-    ),
-    EndpointConfig(
-        name="open-meteo-main",
-        # Forecast API - chỉ dùng được cho recent dates (không phải pure historical)
-        url="https://api.open-meteo.com/v1/forecast",
-        priority=3,
+        rate_limit_rpm=30,
+        timeout=60.0,
     ),
 ]
+
+# Chỉ dùng forecast API cho dates gần đây (2024+)
+WEATHER_ENDPOINTS_RECENT = [
+    EndpointConfig(
+        name="open-meteo-main",
+        url="https://api.open-meteo.com/v1/forecast",
+        priority=1,
+        rate_limit_rpm=30,
+        timeout=60.0,
+    ),
+]
+
+# Legacy alias (deprecated - để backward compat)
+WEATHER_ENDPOINTS = WEATHER_ENDPOINTS_HISTORICAL
 
 # Multiple endpoints cho terrain
 TERRAIN_ENDPOINTS = [
@@ -125,6 +137,9 @@ class ResilientHTTPClient:
         # Track circuit-breaker state
         self._endpoint_failures: dict[str, int] = {e.name: 0 for e in endpoints}
         self._endpoint_blocked_until: dict[str, float] = {}
+
+        # Rate limiting: track last request time per endpoint
+        self._last_request_time: dict[str, float] = {}
     
     def _is_endpoint_blocked(self, endpoint_name: str) -> bool:
         """Check if endpoint is in circuit-breaker cooldown."""
@@ -222,10 +237,20 @@ class ResilientHTTPClient:
                 cached = self._try_load_cache(endpoint, params, body)
                 if cached is not None:
                     return cached
-            
+
+            # Rate limiting: wait if we hit this endpoint too recently
+            last_time = self._last_request_time.get(endpoint.name, 0)
+            min_interval = 60.0 / endpoint.rate_limit_rpm  # seconds between requests
+            wait_time = min_interval - (time.time() - last_time)
+            if wait_time > 0:
+                time.sleep(wait_time)
+
             # Make request
             for attempt in range(self.max_retries):
                 try:
+                    # Update last request time
+                    self._last_request_time[endpoint.name] = time.time()
+
                     if endpoint.method == "GET":
                         resp = self.session.get(
                             endpoint.url,
@@ -266,7 +291,11 @@ class ResilientHTTPClient:
                 
                 except requests.exceptions.HTTPError as e:
                     errors.append(f"{endpoint.name} attempt {attempt+1}: HTTPError: {e}")
-                    # 4xx errors won't fix with retry
+                    # 429: Rate limit - retry with longer cooldown
+                    if resp.status_code == 429:
+                        self._mark_endpoint_failed(endpoint.name, cooldown=120)  # 2 min cooldown
+                        break  # Don't waste retries, go to next endpoint
+                    # 4xx other than 429 won't fix with retry
                     if 400 <= resp.status_code < 500:
                         break
                 
@@ -306,12 +335,40 @@ def get_http_client(
     name: str,
     endpoints: list[EndpointConfig],
     cache_dir: Path | None = None,
+    force_reset: bool = False,
 ) -> ResilientHTTPClient:
-    """Get or create a singleton ResilientHTTPClient."""
-    if name not in _HTTP_CLIENTS:
+    """Get or create a singleton ResilientHTTPClient.
+    
+    Args:
+        name: Client identifier
+        endpoints: List of endpoints to try
+        cache_dir: Directory for caching responses
+        force_reset: If True, destroy existing client and recreate (resets all cooldown)
+    """
+    if name in _HTTP_CLIENTS and force_reset:
+        # Reset circuit breaker state
+        client = _HTTP_CLIENTS[name]
+        client._endpoint_failures = {e.name: 0 for e in endpoints}
+        client._endpoint_blocked_until.clear()
+    elif name not in _HTTP_CLIENTS:
         _HTTP_CLIENTS[name] = ResilientHTTPClient(
             endpoints=endpoints,
             cache_dir=cache_dir,
             cache_prefix=f"http_{name}",
         )
     return _HTTP_CLIENTS[name]
+
+
+# ============================================================
+# Utility: reset all circuit breakers
+# ============================================================
+
+def reset_all_clients():
+    """Reset all HTTP clients (clears all cooldown state).
+
+    Useful when you want to force fresh attempts after network issues.
+    """
+    for name, client in _HTTP_CLIENTS.items():
+        client._endpoint_failures = {e.name: 0 for e in client.endpoints}
+        client._endpoint_blocked_until.clear()
+    print(f"✓ Reset {len(_HTTP_CLIENTS)} HTTP client(s)")
