@@ -1,199 +1,972 @@
-# HINATION — Cảnh báo thiên tai thông minh cho Điện Biên
+# Điện Biên Forecast — Cảnh báo thiên tai thông minh cho Điện Biên
 
-> **AI-powered, sub-regional weather & disaster early-warning for Điện Biên province** — delivering the right information, to the right people, at the right time, in a form everyone can understand.
+> **AI-powered, sub-regional weather and disaster early-warning for Điện Biên** — delivering the right information, to the right people, at the right time, in a form everyone can understand and act on.
 
-HINATION turns raw weather data into **commune-level risk forecasts** and **plain-language warnings with concrete actions**, presented on a color-coded map built for the **village chief / commune official** — who reads the danger in seconds and broadcasts it to residents by **loudspeaker and SMS**, reaching everyone even where the internet doesn't.
+> **Product:** Điện Biên Forecast · **Team:** Hination
+
+Điện Biên Forecast transforms raw weather data into **location-specific risk estimates** and **plain-language warnings with concrete actions**.
+
+The system is designed primarily for:
+
+- Commune disaster-prevention officials.
+- Village chiefs.
+- Local emergency-response teams.
+
+Điện Biên Forecast helps local officials understand danger within seconds, broadcast warnings through existing communication channels, and track which households have received the message or still need support.
+
+The product follows a **communication-first, action-first** principle:
+
+> A warning is not successful when it is published.
+> It is successful when the right people receive it, understand it and act before the dangerous event occurs.
 
 ---
 
 ## 1. The problem
 
-Điện Biên has complex terrain and fast-changing, extreme weather — dense fog, sudden floods, flash floods, and winter frost — that seriously affect agriculture, transport, and the lives of highland residents.
+Điện Biên has complex terrain and fast-changing extreme weather, including:
 
-Today, forecast information has four gaps:
+- Dense fog.
+- Heavy rain.
+- Flash floods.
+- Cold spells.
+- Winter frost.
+
+These events directly affect agriculture, transport, infrastructure and the lives of highland residents.
+
+Current warning delivery has four major gaps:
 
 | Gap | What it means on the ground |
 |---|---|
-| **Too coarse** | Forecasts exist only at the **provincial** level — not specific enough for a district or a cluster of communes, especially in disaster-prone valleys and slopes. |
-| **Too late** | Commune- and village-level residents receive warnings late, after the risk has already grown. |
-| **Too abstract** | Information is presented as technical text — hard to act on for people who don't read meteorological bulletins. |
-| **Wrong channel / language** | It doesn't reach people where they are (Zalo, SMS, loudspeaker) or in the language they speak (Thái, Mông/Hmong). |
+| **Too coarse** | Provincial forecasts are not always specific enough for districts, commune clusters, valleys, slopes or isolated villages. |
+| **Too late** | Information may take too long to reach commune- and village-level residents. |
+| **Too abstract** | Technical meteorological figures do not clearly tell residents what they need to do. |
+| **Wrong channel or language** | A warning may not reach people through the channels they already use or in a language they easily understand. |
 
-**Goal:** build an AI solution that delivers weather information to the **right people, at the right time, in the right language** — with early warnings that tell residents and village officials exactly what to do.
+### Goal
 
----
+Deliver weather information to the:
 
-## 2. The key insight: the last mile
+- Right area.
+- Right people.
+- Right time.
+- Right channel.
+- Right language.
+- Right action.
 
-The hardest part of disaster warning in the highlands is **not the forecast — it's getting it to people who will act on it.** Điện Biên's reality forces this to the front:
+A useful warning must answer six questions:
 
-- **Residents don't (and won't) use a forecast app.** Most highland villagers won't install, learn, or open a dashboard — many aren't comfortable with smartphones or don't read technical text. Building "an app for residents" quietly assumes an audience that isn't there.
-- **The internet often isn't there either.** In mountainous communes, connectivity is intermittent or absent. A warning that requires every resident to be online, right now, will not arrive.
-
-**So HINATION does not try to push a dashboard onto residents. It equips the person who is already trusted to warn the village — the village chief / commune official — and lets them relay.**
-
-```
-   HINATION dashboard              The relay (village chief)            The village
- ┌───────────────────────┐      ┌───────────────────────────┐      ┌────────────────────┐
- │ Map + color danger     │      │ Reads the situation in     │      │ Loudspeaker         │
- │ scale + "what to do"   │─────►│ seconds, decides, acts:    │─────►│ announcement        │
- │ + one-click SMS        │      │  • public loudspeaker      │      │ (reaches everyone,  │
- │                        │      │  • emergency SMS blast     │      │  no phone needed)   │
- │ (one connected device, │      │  • door-to-door / Zalo     │      │ SMS to households   │
- │  the chief's)          │      │                            │      │ → villagers prepare │
- └───────────────────────┘      └───────────────────────────┘      └────────────────────┘
-```
-
-**Why this works:**
-
-- **Only one device needs connectivity** — the chief's. The village doesn't need the internet; the **loudspeaker reaches everyone, including people with no phone at all.**
-- **The chief is a fast decision-maker, not a data analyst.** The dashboard is tuned for a 5-second read (color + icon + one action line), so the chief can *immediately* fire a loudspeaker announcement or an SMS blast about the upcoming disaster and let every household prepare.
-- **It uses trust that already exists.** People act on their chief's word — a channel far stronger than a notification from an unfamiliar app.
-
-This "**dashboard for the chief → broadcast to the village**" model is the design decision that makes every other feature useful.
+1. **Where** is the danger?
+2. **When** may it happen?
+3. **What** is the risk?
+4. **How serious** is it?
+5. **What should people do now?**
+6. **How will local officials know whether people are safe?**
 
 ---
 
-## 3. What HINATION delivers
+## 2. Product principle: communication-first, not app-first
 
-Mapped directly to the required outcomes:
+Điện Biên Forecast does not require every resident to install or continuously open a weather application.
 
-### ✅ Sub-regional detailed forecasts
-Instead of one provincial number, HINATION produces a **7-day, hour-by-hour forecast for each of the 45 communes** of Điện Biên (post-2025 administrative merger) — including the disaster-prone highland areas. Each area gets its own weather series (temperature, rain, wind, humidity, cloud cover) driven by its own coordinates and terrain profile.
+Many residents cannot reliably depend on a dedicated app because of:
 
-### ✅ Early warnings with concrete actions
-When a dangerous-weather threshold is exceeded (heavy rain, frost, flash flood, storm), the system **automatically raises an alert** and generates a **short, plain-language bulletin telling residents and officials what to do** — not just a risk number. Alerts follow Vietnam's national standard (**Quyết định 18/2021/QĐ-TTg**) and a simple **5-level danger scale**.
+- Weak or intermittent internet access.
+- Limited smartphone access.
+- Language and literacy barriers.
+- Low familiarity with technical weather information.
+- The need to receive warnings while working outdoors or away from a screen.
 
-### ✅ Multi-channel & multilingual — built for the relay
-The chief turns one on-screen warning into a village-wide broadcast:
-- **Villager registry + one-click emergency SMS** to every household in the commune (built into the Manage screen).
-- Architecture is channel-agnostic — **public loudspeaker, SMS and Zalo** plug into the same warning engine, so the message reaches people **whether or not they have a phone or the internet.**
-- Bulletins are generated in **Vietnamese** today, with **local-language conversion (Thái, Mông/Hmong)** on the roadmap for ethnic-minority areas.
+Instead, Điện Biên Forecast equips the people who already coordinate local response:
 
-### ✅ Intuitive interface — a 5-second read for the village chief
-The dashboard is designed for the **commune official / village chief**, not for individual residents. The main screen is an **interactive map, not a table of numbers**: each commune is a colored dot on a **green → red danger scale**, with **icons for the disaster type** (flood, landslide, storm, wildfire, strong wind) and a short "việc cần làm" (what to do) line. The chief grasps the situation at a glance and can act — loudspeaker or SMS — within seconds, no meteorological training required.
+- **Commune disaster-prevention officials** monitor risks across villages and coordinate resources.
+- **Village chiefs** relay warnings locally, track household status and organise direct support.
+
+```text
+Weather and risk data
+        ↓
+Điện Biên Forecast control dashboard
+        ↓
+Commune official reviews the situation
+        ↓
+Village chief broadcasts the warning
+        ↓
+Residents receive and respond
+        ↓
+Dashboard shows who is safe,
+who has not responded
+and who needs immediate support
+```
+
+Residents do not need mobile data or an installed app.
+
+They may receive warnings through:
+
+- Public loudspeaker.
+- Cellular SMS.
+- Zalo or community groups.
+- Automated calls.
+- Direct communication from the village chief.
+- Local emergency-response teams.
 
 ---
 
-## 4. The idea / how it works
+## 3. Primary users
 
-HINATION combines a **physics- and data-driven risk model** with an **AI news layer**, then presents the result visually.
+### 3.1 Commune disaster-prevention official
 
-```
-  DATA SOURCES                MODEL LAYER                 DELIVERY
- ┌───────────────┐        ┌──────────────────┐       ┌────────────────────┐
- │ Open-Meteo GFS│──────► │ 7-day hourly      │       │ Interactive map     │
- │  (forecast)   │        │ forecast per      │──────►│ (color + icons)     │
- │ ERA5 archive  │──────► │ commune           │       │                     │
- │  (climate)    │        │                   │       │ Plain-language      │
- │ NASADEM/SRTM  │──────► │ Trained PyTorch   │──────►│ warning bulletins   │
- │  (terrain)    │        │ disaster model +  │       │                     │
- │ IBTrACS/GLC/  │──────► │ heuristic rules   │       │ Emergency SMS to    │
- │  VDDMA (past) │        │ → risk 0–1,       │──────►│ registered villagers│
- └───────────────┘        │   alert level 1–5 │       │                     │
-        ▲                 └──────────────────┘        │ (Zalo / loudspeaker │
-        │                          ▲                   │  ready)             │
-  Brave news search  ─────────────►│  AI brief         └────────────────────┘
-  + LLM summariser   (grounded, per-area "what to do") 
-```
+The commune official needs to know:
 
-**Two independent risk signals, combined for robustness:**
+- Which villages are currently at risk.
+- What type of weather hazard is expected.
+- When the danger may begin and end.
+- Which warnings have been approved and distributed.
+- Which villages have acknowledged receipt.
+- Which areas have households requesting assistance.
+- Where local resources should be prioritised.
 
-1. **Model risk (0–1 → alert level 1–5).** A trained neural network plus terrain- and rainfall-aware heuristic rules score each commune/hour for flood, landslide, storm and wildfire risk against VNDMS thresholds (e.g. rain 24h: 50 / 100 / 200 mm).
-2. **AI news signal (0–2).** For each area, the system searches recent Vietnamese news (VTV, local press, the Hydro-Meteorological Station, government notices), and an LLM summarises **only** the relevant, grounded items into a short "what to do" bulletin — never inventing figures.
+### 3.2 Village chief
 
-The two are merged into a single **overall danger level** shown on the map, so the warning reflects both the numerical model and the latest on-the-ground reporting.
+The village chief needs a real-time control view showing:
 
-### Engineering highlights — the hard problems
+- Which households have received the warning.
+- Which households have confirmed they are taking action.
+- Which households have not responded.
+- Which households need assistance.
+- Whether roads, bridges or routes are blocked.
+- Which household or area must be handled first.
 
-- **Antecedent seeding (bridging past + future).** The trained network relies on 7/14/30-day rolling-rainfall windows, but a live GFS forecast only contains *future* data — leaving those windows empty and biasing every prediction toward "no disaster." HINATION solves this by **fetching the ~30 days of observed daily weather from the ERA5 archive and stitching it in front of the GFS forecast series**, so the rolling features are complete on the very first forecast hour. Seeding is best-effort with a forecast-only fallback (`model/antecedent.py`).
-- **Training labels grounded in real events.** Historical weather days are labeled by **matching against real disaster records** (IBTrACS typhoons, NASA Global Landslide Catalog, VDDMA floods/storms) by date and location — so the model learns from what actually happened, not just from rainfall thresholds.
-- **Credible alerts via two-signal fusion.** The raw model tends to over-warn, so its level is deliberately **reduced by one and combined with the independent, news-grounded AI signal (0–2)**. Reaching the top of the scale requires corroboration from real-world reporting — cutting false alarms while keeping genuine emergencies loud.
-- **Resilient data access.** Vietnamese networks frequently block the upstream weather/DNS hosts, so the ingestion layer uses a **multi-endpoint client with circuit-breaker, DNS fallback, and stale-cache serving** — the forecast keeps working even when a data source is unreachable.
+### 3.3 Residents
+
+Residents need warnings that are:
+
+- Short.
+- Easy to understand.
+- Specific to their location.
+- Clear about time and severity.
+- Focused on one to three concrete actions.
+- Available through channels they already use.
 
 ---
 
-## 5. Tech stack
+## 4. What Điện Biên Forecast delivers
+
+### 4.1 Location-specific 3–7 day forecasts
+
+Điện Biên Forecast generates a 3–7 day forecast for configured locations in Điện Biên using representative coordinates for each area.
+
+Forecast variables may include:
+
+- Temperature.
+- Rainfall.
+- Rain probability.
+- Wind speed.
+- Humidity.
+- Cloud cover.
+- Visibility, where available.
+
+These outputs are location-specific forecast estimates.
+
+They improve local relevance compared with a single provincial forecast but do not replace official forecasts and warnings issued by authorised hydro-meteorological agencies.
+
+The system should not describe coordinate-based API output as an exact official forecast for every household or village.
+
+### 4.2 Automatic warning detection
+
+A deterministic risk engine evaluates weather data against:
+
+- Configurable thresholds.
+- Local terrain.
+- Historical risk profiles.
+- Data-quality confidence.
+- Optional trained model scores.
+
+Current MVP risk types:
+
+- Heavy rain.
+- Flash-flood risk.
+- Dense fog or low visibility.
+- Cold and frost risk.
+
+Possible future extensions:
+
+- Landslide risk.
+- Severe wind and storms.
+- Wildfire risk.
+
+The interface uses a five-level warning scale:
+
+| Level | Meaning | Expected response |
+|---|---|---|
+| **1 — Safe** | No significant risk | Continue normal activities and monitor updates. |
+| **2 — Watch** | Early signs of unfavourable weather | Prepare and follow updates. |
+| **3 — Prepare** | Meaningful risk is developing | Protect crops, livestock and vulnerable assets. |
+| **4 — Dangerous** | High risk requiring action | Restrict movement and prepare local response. |
+| **5 — Emergency** | Immediate or severe danger | Evacuate or follow emergency instructions. |
+
+The prototype warning scale is informed by official disaster-risk guidance.
+
+Điện Biên Forecast is a decision-support prototype and does not issue official government warnings.
+
+### 4.3 Plain-language warnings with concrete actions
+
+The system converts structured risk output into a short bulletin containing:
+
+- Affected location.
+- Expected start and end time.
+- Warning level.
+- Risk type.
+- One to three approved actions.
+- Instructions for residents.
+- Instructions for village or commune officials.
+
+Example:
+
+```text
+CẢNH BÁO CAM — MƯA LỚN
+
+Khu vực: Mường Nhé
+Thời gian: Từ 18:00 hôm nay đến 06:00 ngày mai
+
+Không đi qua suối hoặc ngầm tràn.
+Tránh khu vực gần sườn núi.
+Cán bộ bản kiểm tra các hộ có nguy cơ cao.
+```
+
+Warnings should not only tell residents to “be careful”.
+
+They must specify:
+
+```text
+Where → When → What danger → What action → Action deadline → How to confirm status
+```
+
+### 4.4 Multi-channel delivery
+
+The warning engine is designed to support:
+
+- Web dashboard for officials.
+- Public loudspeaker.
+- SMS.
+- Zalo Official Account.
+- Community Zalo groups.
+- Automated voice calls.
+- Loudspeaker-ready text-to-speech output.
+
+Warnings should be targeted to:
+
+- The affected village.
+- The affected risk zone.
+- Vulnerable households.
+- Households near streams.
+- Households near steep slopes.
+- Elderly people living alone.
+- People with mobility limitations.
+
+Warnings should not automatically be sent to every household in the commune unless the whole commune is affected.
+
+### 4.5 Multi-language communication
+
+Current prototype output:
+
+- Vietnamese plain-language bulletins.
+
+Roadmap:
+
+- Thái-language version.
+- Mông/Hmong-language version.
+- Verified local terminology library.
+- Native-speaker review.
+- Loudspeaker-ready audio in supported languages.
+
+AI-generated translations must be reviewed before operational use, especially for high-risk warnings.
+
+---
+
+## 5. How Điện Biên Forecast works
+
+The complete processing and delivery pipeline is:
+
+```text
+DATA SOURCES
+├─ Open-Meteo weather forecast
+├─ Historical reanalysis data
+├─ Terrain and elevation data
+├─ Historical disaster records
+├─ Local risk configuration
+└─ Future local station integration
+        ↓
+DATA INGESTION AND NORMALISATION
+        ↓
+LOCATION-SPECIFIC FORECAST PROCESSING
+        ↓
+RISK ENGINE
+├─ Configurable thresholds
+├─ Terrain and local risk profile
+├─ Optional trained disaster model
+├─ Data-quality confidence
+└─ Alert cooldown and validation rules
+        ↓
+STRUCTURED WARNING OUTPUT
+├─ Location
+├─ Time
+├─ Risk type
+├─ Warning level
+├─ Triggered rules
+└─ Approved actions
+        ↓
+AI COMMUNICATION LAYER
+├─ Plain-language Vietnamese
+├─ Resident version
+├─ Official version
+├─ SMS version
+├─ Loudspeaker version
+└─ Future Thái and Mông/Hmong conversion
+        ↓
+HUMAN REVIEW
+        ↓
+DISTRIBUTION
+├─ Dashboard
+├─ SMS
+├─ Zalo
+├─ Loudspeaker
+└─ Automated call
+        ↓
+ACKNOWLEDGEMENT AND FIELD FEEDBACK
+        ↓
+SITUATION CONTROL DASHBOARD
+```
+
+---
+
+## 6. Warning decision and AI guardrails
+
+Điện Biên Forecast separates two responsibilities:
+
+```text
+Risk decision-making ≠ Language generation
+```
+
+### 6.1 Risk engine responsibilities
+
+The risk engine determines:
+
+- Whether a threshold has been exceeded.
+- Which area is affected.
+- Which risk type is relevant.
+- The warning level.
+- The expected start and end time.
+- Which approved actions are attached to the warning.
+
+The warning level must be traceable to:
+
+- Input weather data.
+- Triggered threshold.
+- Local risk profile.
+- Model score, where used.
+- Data timestamp.
+- Data-quality status.
+
+### 6.2 AI communication responsibilities
+
+The AI layer may:
+
+- Rewrite structured data into plain language.
+- Produce separate versions for residents and officials.
+- Shorten content for SMS.
+- Format content for Zalo.
+- Format content for loudspeaker use.
+- Convert approved content into supported languages.
+
+The AI layer must not:
+
+- Increase the warning level.
+- Decrease the warning level.
+- Change weather figures.
+- Change the affected location.
+- Change the warning time.
+- Invent a disaster type.
+- Add unsupported instructions.
+- Present uncertain forecasts as certain events.
+
+### 6.3 Supporting news and official notices
+
+Recent news or official notices may be displayed as additional context for officials.
+
+They must not:
+
+- Determine the warning level.
+- Block a warning triggered by the risk engine.
+- Automatically increase or decrease a warning.
+- Replace authorised local reports.
+- Replace hydro-meteorological data.
+
+News often appears after an event has already begun, so it must not be required before issuing an early warning.
+
+### 6.4 Recommended approval policy
+
+| Warning level | Default workflow |
+|---|---|
+| **Level 1–2** | Display on the dashboard. |
+| **Level 3** | Generate a draft and notify the operator. |
+| **Level 4–5** | Generate a draft, require authorised review and broadcast after approval. |
+
+> **Emergency auto-broadcast:** enable only when an approved operating policy is configured.
+
+---
+
+## 7. Two-way disaster control loop
+
+Điện Biên Forecast is not only a broadcast system.
+
+It creates a feedback loop between:
+
+- Residents.
+- Village chiefs.
+- Commune officials.
+- Local response teams.
+
+```text
+Risk detected
+        ↓
+Warning generated
+        ↓
+Official reviews and approves
+        ↓
+Warning broadcast through selected channels
+        ↓
+Households acknowledge receipt
+        ↓
+Village chief sees live response status
+        ↓
+Unresponsive or vulnerable households are prioritised
+        ↓
+Local teams provide support
+        ↓
+Field reports return to the commune dashboard
+```
+
+A warning is considered successful only when the full chain is completed:
+
+```text
+Detect danger → Create warning → Send to the correct area → Residents receive it
+→ Residents understand it → Residents take action → Village chief confirms local status
+```
+
+---
+
+## 8. Household response
+
+Residents should not need to type long messages.
+
+They may respond using a simple number, button or phone keypad:
+
+- 1 — Đã nhận và đang thực hiện
+- 2 — Gia đình cần hỗ trợ
+- 3 — Đường bị chia cắt
+- 4 — Có người bị thương
+- 5 — Thông tin tại đây không đúng
+
+For an automated phone call:
+
+> Nhấn phím 1 nếu gia đình đã nhận cảnh báo và đang thực hiện.  
+> Nhấn phím 2 nếu gia đình cần hỗ trợ.  
+> Nhấn phím 3 nếu đường đi đã bị chia cắt.
+
+---
+
+## 9. Situation control dashboard
+
+The village chief dashboard should show:
+
+| Metric | Count |
+|---|---:|
+| Total households in affected area | **86** |
+| Received warning | 62 |
+| Taking action | 45 |
+| Need assistance | 7 |
+| No response | 17 |
+| Road access blocked | 3 |
+
+The dashboard should create a prioritised task list:
+
+| Household or area | Status | Recommended response |
+|---|---|---|
+| Elderly person living alone | No response | Assign local team to check. |
+| Household near stream | Needs assistance | Support evacuation. |
+| Group of riverside homes | High risk | Broadcast again and visit directly. |
+| Access road | Blocked | Escalate to commune official. |
+
+The purpose of the dashboard is not to show more weather data.
+
+Its purpose is to help the village chief answer:
+
+> **Who is safe, who has not responded, who needs help and who should be handled first?**
+
+---
+
+## 10. Escalation logic
+
+```text
+Send SMS, Zalo and loudspeaker warning
+        ↓
+Wait for configurable acknowledgement period
+        ↓
+No acknowledgement
+        ↓
+Trigger automated call or resend
+        ↓
+Still no response
+        ↓
+Assign follow-up task to village chief or response team
+        ↓
+Escalate unresolved cases to commune level
+```
+
+Possible task statuses:
+
+- Not assigned.
+- Assigned.
+- In progress.
+- Household contacted.
+- Household safe.
+- Assistance required.
+- Escalated.
+- Completed.
+
+---
+
+## 11. Alert-fatigue controls
+
+To prevent residents from ignoring repeated warnings:
+
+- Alerts are sent only when the level changes or meaningful new information appears.
+- Duplicate messages inside a configurable cooldown period are merged.
+- Threshold hysteresis prevents repeated switching between levels.
+- Each warning includes an expiry time.
+- An all-safe or downgrade message is issued when appropriate.
+- Low-level warnings are not broadcast through every emergency channel.
+- Emergency calls are reserved for high-risk situations.
+- Updated warnings should replace previous warnings rather than create unnecessary duplicates.
+
+---
+
+## 12. Current MVP scope
+
+### 12.1 Demo locations
+
+The hackathon demo should show at least three locations in Điện Biên:
+
+- Thành phố Điện Biên Phủ.
+- Tuần Giáo.
+- Mường Nhé.
+
+The system may include additional configured commune- or ward-level areas.
+
+Do not describe every configured point as an exact official commune forecast.
+
+> **Use:** “Location-specific forecast estimate.”  
+> **Avoid:** “Official commune-level forecast.”
+
+### 12.2 MVP flow
+
+```text
+Select location
+        ↓
+Fetch 3–7 day forecast
+        ↓
+Normalise weather data
+        ↓
+Evaluate risk thresholds
+        ↓
+Assign warning level
+        ↓
+Generate structured warning
+        ↓
+Create plain-language bulletin
+        ↓
+Review and approve
+        ↓
+Simulate or execute multi-channel delivery
+        ↓
+Track acknowledgement and support requests
+```
+
+### 12.3 Capability status
+
+| Capability | Status |
+|---|---|
+| Weather forecast API integration | Implemented |
+| 3–7 day location-specific forecast | Implemented |
+| Configurable warning thresholds | Implemented |
+| Interactive risk map | Implemented |
+| Plain-language Vietnamese bulletin | Implemented |
+| Villager or household registry | Demo implementation |
+| SMS interface | Simulated or adapter-ready |
+| Live SMS gateway | Roadmap unless a provider is configured |
+| Zalo Official Account integration | Roadmap |
+| Loudspeaker or TTS integration | Roadmap |
+| Thái and Mông/Hmong conversion | Roadmap |
+| Household acknowledgement loop | MVP target or simulated flow |
+| Live field-response tracking | Roadmap or simulated flow |
+| Direct local station feed | Roadmap |
+
+Update this table according to the features that are actually working in the repository.
+
+Do not describe simulated integrations as fully operational.
+
+---
+
+## 13. Engineering architecture
+
+### 13.1 Data sources
+
+Potential sources include:
+
+- Open-Meteo for weather forecasts.
+- GFS forecast data provided through Open-Meteo.
+- ERA5 reanalysis estimates for historical weather context.
+- NASADEM or SRTM for elevation and terrain-related features.
+- Historical disaster records with sufficient location and date quality.
+- Local risk-zone configuration.
+- Future integration with the Điện Biên Hydro-Meteorological Station.
+
+ERA5 is reanalysis data, not direct station observation.
+
+Local forecasts based on representative coordinates should not be described as exact official forecasts for every household or village.
+
+### 13.2 Forecast processing
+
+The system may use approximately 30 days of historical reanalysis estimates before the future forecast period to complete rolling rainfall or weather-history features.
+
+```text
+Historical reanalysis context
+        +
+Future weather forecast
+        ↓
+Complete rolling features
+        ↓
+Risk model and rule engine
+```
+
+If historical data is unavailable, the service should:
+
+- Fall back gracefully.
+- Mark reduced confidence.
+- Avoid silently presenting incomplete data as equally reliable.
+- Continue serving cached data where appropriate.
+
+### 13.3 Risk engine
+
+The risk engine may combine:
+
+- Deterministic weather thresholds.
+- Terrain features.
+- Historical risk profile.
+- Optional trained model score.
+- Data-quality confidence.
+
+The final warning level must remain auditable.
+
+The system should retain:
+
+- Input values.
+- Triggered rules.
+- Model score, where used.
+- Data source.
+- Data timestamp.
+- Warning level.
+- Warning creator.
+- Approving official.
+- Delivery channels.
+- Delivery status.
+- Household acknowledgements.
+
+---
+
+## 14. Model evaluation
+
+Any model-performance claim must be linked to a reproducible evaluation report.
+
+Recommended document: [`docs/model-evaluation.md`](docs/model-evaluation.md)
+
+The report should include:
+
+- Dataset period.
+- Number of samples.
+- Number of positive disaster events.
+- Class distribution.
+- Train, validation and test split strategy.
+- Time-based or event-based holdout method.
+- Precision.
+- Recall.
+- F1-score.
+- ROC-AUC.
+- Confusion matrix.
+- Performance by disaster type.
+- Threshold-selection method.
+- Known limitations.
+
+Accuracy alone should not be used as the main metric for an imbalanced disaster-detection problem.
+
+Avoid presenting model accuracy as a production guarantee.
+
+---
+
+## 15. Tech stack
 
 | Layer | Technology | Role |
 |---|---|---|
-| **Forecast API** | Python · **FastAPI** · Uvicorn | Serves combined 7-day × 45-area forecast; ETag caching, health checks, graceful stale-data fallback. |
-| **Disaster model** | **PyTorch** multi-task neural net (`disaster_nn.pt`) + scikit-learn / heuristic rules | Predicts disaster probability, type, and severity level from weather + terrain + history. |
-| **Data ingestion** | `requests` + resilient multi-endpoint HTTP client | Open-Meteo (GFS forecast & ERA5 archive), NASADEM/Open-Elevation terrain, with circuit-breaker + disk cache for unreliable networks. |
-| **Scheduler** | `schedule` | Hourly refresh: re-fetch forecast → recompute risk → publish new snapshot. |
-| **Frontend** | **Next.js 16** · **React 19** · TypeScript · **Leaflet** map · Tailwind CSS · Phosphor icons | Color-coded commune map, timeline, danger legend, villager management, emergency-SMS flow. |
-| **AI brief** | LLM (OpenAI-compatible) + **Brave news search** | Grounded, per-area "what to do" bulletins in Vietnamese. |
-| **Storage** | SQLite (`better-sqlite3`) | Villager registry (per commune) + shared AI-brief cache. |
-| **Delivery** | SMS module (villager registry) · Zalo / loudspeaker-ready architecture | Push warnings to residents and officials. |
-| **Deployment** | **Docker Compose** · Nginx reverse proxy | One-command stack: nginx (:80) → frontend (:1111) → backend (:1112) + optional scheduler. |
-
-### Data sources
-NOAA **GFS** (13 km forecast, via Open-Meteo) · **ERA5** reanalysis climate baseline (2015–present) · **NASADEM/SRTM** terrain (elevation, slope, aspect) · historical disaster catalogs from **IBTrACS** (typhoons), **NASA GLC** (landslides) and **VDDMA** (Vietnam floods/storms). All free / open, plus room to integrate the Điện Biên Hydro-Meteorological Station feed.
-
-### Model quality (held-out test set)
-The trained disaster network reaches **AUC ≈ 0.82** on disaster detection, with **~93–95% accuracy** on disaster-type and severity classification. Terrain confidence is factored in: landslide risk is discounted for communes without a calibrated terrain profile, avoiding false alarms.
+| **Forecast API** | Python · FastAPI · Uvicorn | Serves forecast, risk and warning data. |
+| **Risk model** | PyTorch model plus deterministic rules | Produces auditable risk scores and warning candidates. |
+| **Data ingestion** | Python HTTP client with cache and fallback | Fetches weather, historical and terrain data. |
+| **Scheduler** | Python scheduler | Refreshes forecasts and recomputes risk. |
+| **Frontend** | Next.js · React · TypeScript · Leaflet · Tailwind CSS | Displays map, warning status and response dashboard. |
+| **AI communication** | OpenAI-compatible LLM | Generates controlled plain-language bulletin formats. |
+| **Storage** | SQLite for demo | Stores registry, warnings, acknowledgements and audit data. |
+| **Delivery** | SMS, Zalo and loudspeaker adapters | Sends or simulates multi-channel warnings. |
+| **Deployment** | Docker Compose · Nginx | Runs frontend, backend and optional scheduler. |
 
 ---
 
-## 6. Meeting the minimum submission requirements
+## 16. Privacy, security and access control
 
-| Requirement | Where it's demonstrated |
+The household registry may contain personal or sensitive information.
+
+The hackathon demo should use synthetic household data.
+
+Operational deployment requires:
+
+- Approved data-sharing procedures.
+- Consent procedures where required.
+- Role-based access control.
+- Commune officials limited to authorised areas.
+- Village chiefs limited to assigned villages.
+- Audit logging for warning creation, approval and delivery.
+- Encryption of phone numbers.
+- Protection of sensitive household attributes.
+- Defined data-retention periods.
+- Secure backup and recovery.
+- Incident-response procedures.
+
+Sensitive attributes may include:
+
+- Phone number.
+- Home location.
+- Disability or mobility limitation.
+- Elderly person living alone.
+- High-risk household classification.
+- Evacuation status.
+- Support-request status.
+
+These data should only be collected when operationally necessary.
+
+---
+
+## 17. Meeting the minimum submission requirements
+
+| Requirement | Điện Biên Forecast demonstration |
 |---|---|
-| **3–7 day forecast for ≥3 locations** | 7-day hourly forecast for **all 45 communes** (well beyond 3), served at `GET /api/v1/forecasts/latest` and rendered on the map. |
-| **Automatic warning on threshold breach** | Risk engine raises **alert levels 1–5** per VNDMS QĐ 18/2021 thresholds and auto-generates a bulletin the moment a threshold is crossed. |
-| **Simple interface for non-experts** | Chief-facing map with **color scale + disaster icons + plain "what to do" text** (danger legend An toàn → Rất cao), designed as a 5-second read that drives an immediate loudspeaker/SMS broadcast to residents. |
-| **Architecture doc** | This README + the detailed engineering guide in [`hination/README.md`](hination/README.md) and domain glossary in [`CONTEXT.md`](CONTEXT.md). |
+| **3–7 day forecast for at least 3 locations** | Location-specific forecast for Điện Biên Phủ, Tuần Giáo and Mường Nhé. |
+| **Automatic warning on threshold breach** | Deterministic risk engine creates a warning candidate when configured thresholds are exceeded. |
+| **Simple interface for non-experts** | Color, icon, location, time and one-to-three concrete actions. |
+| **Resident-understandable output** | Short SMS, warning card or loudspeaker-ready bulletin. |
+| **Architecture document** | This README and detailed architecture documentation. |
+| **One-page deck** | Link to the final one-page solution deck. |
+| **Source data** | Documented in the data-source and architecture sections. |
+| **Processing model** | Forecast processing, risk engine and AI communication layer. |
+| **Distribution channels** | Dashboard, SMS, Zalo, loudspeaker and automated-call adapters. |
+| **Deployment roadmap** | MVP, pilot and scale phases. |
+
+Recommended project links:
+
+- [One-page solution deck](docs/HINATION-one-page-deck.pdf)
+- [System architecture](docs/architecture.md)
+- [Model evaluation](docs/model-evaluation.md)
+- [Demo script](docs/demo-script.md)
 
 ---
 
-## 7. Running the demo
+## 18. Demo scenario
 
-**Full stack (recommended):**
+### 18.1 Scenario
+
+A highland area in Mường Nhé is forecast to receive heavy rainfall.
+
+The affected village contains households near streams and steep slopes.
+
+### 18.2 Demo flow
+
+1. Open the control dashboard.
+2. Compare Điện Biên Phủ, Tuần Giáo and Mường Nhé.
+3. Show Mường Nhé moving to a high warning level.
+4. Open the warning details:
+   - Triggered threshold.
+   - Forecast time.
+   - Affected location.
+   - Risk type.
+5. Generate a resident bulletin.
+6. Generate a village-chief bulletin.
+7. Show the SMS version.
+8. Show the loudspeaker version.
+9. Approve and press Broadcast warning.
+10. Display household response status:
+    - Received.
+    - Taking action.
+    - Needs assistance.
+    - No response.
+11. Assign a follow-up task to a local response team.
+12. Escalate unresolved cases to the commune official.
+
+### 18.3 Demo message
+
+```text
+CẢNH BÁO NGUY HIỂM — MƯA LỚN
+
+Từ 18:00 hôm nay đến 06:00 ngày mai,
+khu vực Mường Nhé có nguy cơ mưa lớn.
+
+Không đi qua suối hoặc ngầm tràn.
+Tránh khu vực gần sườn núi.
+Các hộ cần hỗ trợ trả lời số 2.
+```
+
+---
+
+## 19. Running the demo
+
+### 19.1 Full stack
+
 ```bash
 docker compose up --build -d
-# nginx → http://localhost   |   frontend :1111   |   backend :1112
-# Optional hourly refresher:
+
+# nginx:   http://localhost
+# frontend: http://localhost:1111
+# backend:  http://localhost:1112
+
+# Optional scheduler
 docker compose --profile scheduler up --build -d
 ```
 
-**Backend only (development):**
+### 19.2 Backend only
+
 ```bash
 cd hination
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m venv .venv
+
+# Linux or macOS
+source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+
 pip install -r requirements.txt
-uvicorn api.main:app --reload --port 8000           # docs at /docs
+uvicorn api.main:app --reload --port 8000
 ```
 
-**Frontend only (development):**
+API documentation: `http://localhost:8000/docs`
+
+### 19.3 Frontend only
+
 ```bash
 cd hination-fe
 pnpm install
-pnpm dev                                             # http://localhost:3000
+pnpm dev
 ```
 
-See [`hination/README.md`](hination/README.md) for the full engineering reference (modules, API schema, training, configuration).
+Frontend development URL: `http://localhost:3000`
+
+For complete engineering details, see:
+
+[hination/README.md](hination/README.md)
 
 ---
 
-## 8. Deployment roadmap
+## 20. Deployment roadmap
 
-- **Now:** 45-commune 7-day forecast · 5-level auto-warnings · interactive map · AI bulletins · villager SMS registry · Dockerized stack.
-- **Next:** wire a live SMS gateway + **Zalo Official Account**; **loudspeaker/TTS** audio bulletins; **Thái & Mông/Hmong** translation of warnings.
-- **Later:** direct integration with the Điện Biên Hydro-Meteorological Station feed; push notifications; expansion to neighbouring Tây Bắc provinces.
+### 20.1 Phase 1 — Hackathon MVP
+
+- 3–7 day forecast for at least three locations.
+- Automatic threshold-based warning candidates.
+- Interactive official-facing map.
+- Plain-language Vietnamese bulletin.
+- Simulated SMS and loudspeaker output.
+- Demo household registry.
+- Simulated acknowledgement dashboard.
+
+### 20.2 Phase 2 — Local pilot
+
+- Validate thresholds with hydro-meteorological experts.
+- Connect a live SMS gateway.
+- Integrate Zalo Official Account.
+- Generate loudspeaker-ready TTS audio.
+- Verify Thái and Mông/Hmong warning templates with native speakers.
+- Pilot with selected communes and villages.
+- Add real acknowledgement tracking.
+- Add real support-request tracking.
+- Define official approval and escalation procedures.
+
+### 20.3 Phase 3 — Operational scale
+
+- Direct integration with local station feeds.
+- Calibrated terrain and local risk profiles.
+- Expansion to more commune- and village-level areas.
+- Automated calls for high-risk households.
+- Integration with local emergency-response teams.
+- Offline and degraded-network operating modes.
+- Audit and reporting tools.
+- Post-event analysis.
+- Expansion to neighbouring north-western provinces where appropriate.
 
 ---
 
-## 9. Repository layout
+## 21. Repository layout
 
-```
-hination/          Python backend — forecast API, disaster model, data pipelines, scheduler
-hination-fe/       Next.js frontend — map UI, danger scale, villager & SMS management
-nginx/             Reverse-proxy config for the production stack
-data/              Cached weather/terrain/disaster data (built at runtime)
-docker-compose.yml One-command production stack
-CONTEXT.md         Domain glossary (geography, disaster types, alert standards)
-```
+| Path | Contents |
+|---|---|
+| [`hination/`](hination/) | Python backend, forecast API, risk engine, data pipelines and scheduler. |
+| [`hination-fe/`](hination-fe/) | Next.js frontend, interactive map, warning control, household management and response management. |
+| [`nginx/`](nginx/) | Reverse-proxy configuration. |
+| [`data/`](data/) | Runtime weather, terrain and disaster-data caches. |
+| [`docs/`](docs/) | Architecture, model evaluation, demo script and one-page deck. |
+| [`docker-compose.yml`](docker-compose.yml) | One-command local deployment. |
+| [`CONTEXT.md`](CONTEXT.md) | Domain glossary, geography, warning levels and risk types. |
 
 ---
 
-*Built for the Điện Biên disaster-prevention challenge — bringing timely, understandable, actionable weather warnings to every commune.*
+## 22. North-star metric
+
+Điện Biên Forecast should not be evaluated only by weather-model accuracy.
+
+The north-star metric is:
+
+> **The percentage of households in the affected risk area that receive, understand and confirm the required action before the dangerous event begins.**
+
+Supporting metrics:
+
+- Time from risk detection to warning broadcast.
+- Percentage of affected households reached.
+- Acknowledgement rate within five minutes.
+- Number of households requiring support.
+- Number of households with no response.
+- Time required to resolve a support request.
+- False-warning rate.
+- Percentage of warnings delivered before the event.
+- Percentage of residents who correctly understand the required action.
+- Percentage of village chiefs who confirm local status.
+
+---
+
+## 23. Product positioning
+
+Điện Biên Forecast is not simply:
+
+> A weather forecast application for Điện Biên.
+
+Điện Biên Forecast is:
+
+> **An AI-assisted last-mile disaster-warning and local response-control system** that transforms weather data into clear actions, distributes them through existing community channels, and helps local officials track who is safe and who still needs support.
+
+> **Right place. Right time. Right language. Right action.**  
+> **Đúng khu vực — Đúng thời điểm — Đúng ngôn ngữ — Đúng hành động.**
+
+Built by **Team Hination** for the Điện Biên disaster-prevention challenge — turning weather information into timely, understandable and trackable community action.
