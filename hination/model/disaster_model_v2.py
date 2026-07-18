@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any
 
 from model.areas import FORECAST_AREAS
-from model.io_utils import atomic_write_json
+from model.io_utils import atomic_write_json 
 
 warnings.filterwarnings("ignore")
 

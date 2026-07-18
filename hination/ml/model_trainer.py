@@ -29,11 +29,24 @@ from typing import Any
 
 import numpy as np
 
+try:
+    from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+    from sklearn.metrics import (
+        roc_auc_score, brier_score_loss, confusion_matrix,
+        precision_recall_curve,
+    )
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
+    def TimeSeriesSplit(n_splits=5):  # type: ignore
+        raise RuntimeError("sklearn not installed")
+
 # ML models - use compute layer for GPU/CPU auto-detect
 from ml.compute import (
     get_compute,
     make_random_forest,
     make_gradient_boosting,
+    make_cross_val,
     train_and_save_info,
 )
 
