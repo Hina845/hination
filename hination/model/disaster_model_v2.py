@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import math
+import statistics
 import warnings
 from dataclasses import dataclass
 from datetime import datetime
@@ -38,7 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from model.areas import FORECAST_AREAS
-from model.io_utils import atomic_write_json 
+from model.io_utils import atomic_write_json
 
 warnings.filterwarnings("ignore")
 
