@@ -18,6 +18,7 @@ import {
   DISASTER_LABELS,
   VI_WEEKDAYS,
   colorForLevel,
+  temperatureLevel,
   tierForLevel,
 } from "@/components/map-theme";
 import type { AreaBriefInput } from "@/types/area-brief";
@@ -162,17 +163,43 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
     () => DISASTER_FILTERS.find((option) => option.key === disasterKey) ?? DISASTER_FILTERS[0],
     [disasterKey],
   );
-  const matchesDisaster = useCallback(
-    (area: ForecastArea) => disasterFilter.matches.includes(area.danger.dominantDisaster),
+  // The level an area contributes for the *selected* forecast: its combined danger level
+  // for disaster filters, or its temperature alert level when the temperature filter is on.
+  const levelForArea = useCallback(
+    (area: ForecastArea) =>
+      disasterFilter.kind === "temperature" ? temperatureLevel(area.weather) : displayLevel(area),
+    [disasterFilter],
+  );
+  // Areas emphasized on the map: matching dominant disaster, or (temperature) any area
+  // that has crossed into an alert band (level ≥ 2).
+  const emphasizes = useCallback(
+    (area: ForecastArea) =>
+      disasterFilter.kind === "temperature"
+        ? temperatureLevel(area.weather) >= 2
+        : disasterFilter.matches.includes(area.danger.dominantDisaster),
     [disasterFilter],
   );
 
-  // Highest-risk area of the selected day drives the timeline label and the default alert card.
+  // Highest area of the selected day *for the selected forecast* drives the timeline label —
+  // rank by that forecast's level, breaking ties on overall risk so the label follows the filter.
   const peakArea = useMemo(
-    () => day.areas.reduce<ForecastArea | null>((max, area) => (area.danger.overallRisk > (max?.danger.overallRisk ?? -1) ? area : max), null),
-    [day],
+    () =>
+      day.areas.reduce<ForecastArea | null>((best, area) => {
+        if (!best) return area;
+        const areaLevel = levelForArea(area);
+        const bestLevel = levelForArea(best);
+        if (areaLevel > bestLevel) return area;
+        if (areaLevel === bestLevel && area.danger.overallRisk > best.danger.overallRisk) return area;
+        return best;
+      }, null),
+    [day, levelForArea],
   );
-  const dangerousDay = day.maximumAlertLevel >= DANGEROUS_LEVEL;
+  // Per-day max level for the selected forecast, so the timeline dots/labels track the filter.
+  const dayLevels = useMemo(
+    () => forecast.days.map((forecastDay) => forecastDay.areas.reduce((max, area) => Math.max(max, levelForArea(area)), 0)),
+    [forecast.days, levelForArea],
+  );
+  const dangerousDay = (dayLevels[selectedDay] ?? 0) >= DANGEROUS_LEVEL;
   const peakLabel = peakArea ? formatPeakTime(peakArea.danger.peakTime) : null;
 
   // Notification list: every currently-dangerous area on the selected day, ordered by
@@ -241,14 +268,14 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
     if (!area) {
       return { color: "rgba(255,255,255,.7)", weight: 1, fillColor: "#cbd5e1", fillOpacity: 0.16 };
     }
-    const emphasized = matchesDisaster(area);
+    const emphasized = emphasizes(area);
     return {
       color: "rgba(255,255,255,.7)",
       weight: emphasized ? 1.5 : 1,
-      fillColor: colorForLevel(displayLevel(area)),
+      fillColor: colorForLevel(levelForArea(area)),
       fillOpacity: emphasized ? 0.62 : 0.3,
     };
-  }, [areaById, matchesDisaster]);
+  }, [areaById, emphasizes, levelForArea]);
 
   function bindCommune(feature: Feature<Geometry, CommuneProperties>, layer: Layer) {
     const forecastId = forecastIdFor(feature.properties);
@@ -258,11 +285,16 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
       return;
     }
     // Rich weather tooltip + interactions live on the commune area itself now that the
-    // dots are gone: hover opens the AI brief, click opens the alert detail card.
+    // dots are gone: hover opens the AI brief, click opens the alert detail card. The
+    // headline line follows the selected forecast (danger type, or temperature band).
+    const forecastLine =
+      disasterFilter.kind === "temperature"
+        ? `Nhiệt độ · cấp ${levelForArea(area)}`
+        : `${DISASTER_LABELS[area.danger.dominantDisaster]} · cấp ${displayLevel(area)} · đỉnh ${formatHour(area.danger.peakTime)}`;
     layer.bindTooltip(
       `<div class="tooltip-content">`
       + `<strong>${area.name}</strong>`
-      + `<span>${DISASTER_LABELS[area.danger.dominantDisaster]} · cấp ${displayLevel(area)} · đỉnh ${formatHour(area.danger.peakTime)}</span>`
+      + `<span>${forecastLine}</span>`
       + `<span>${area.weather.temperatureMinC}–${area.weather.temperatureMaxC}°C · mưa ${area.weather.rainfallTotalMm} mm</span>`
       + `<span>Gió giật ${area.weather.windGustMaxKmh} km/h · ẩm ${area.weather.humidityAveragePct}%</span>`
       + `<em>${area.danger.message}</em>`
@@ -496,7 +528,7 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
         />
       )}
 
-      <TimelineDock days={forecast.days} selected={selectedDay} onSelect={onSelectDay} peakLabel={peakLabel} dangerous={dangerousDay} />
+      <TimelineDock days={forecast.days} dayLevels={dayLevels} selected={selectedDay} onSelect={onSelectDay} peakLabel={peakLabel} dangerous={dangerousDay} />
     </main>
   );
 }

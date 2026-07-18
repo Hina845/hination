@@ -630,6 +630,11 @@ Potential sources include:
 - Local risk-zone configuration.
 - Future integration with the Điện Biên Hydro-Meteorological Station.
 
+Pre-trained hazard signals (independent of the self-trained model):
+
+- **Flash flood** — NOAA GloFAS v4 river-discharge forecasts via the free Open-Meteo Flood API. Each commune's forecast discharge is scored against its own 30-year discharge climatology (percentiles), so the level reflects local abnormality, not raw flow. Build the one-time per-commune climatology cache with `python -m model.hazard_providers --build-climatology` (writes `data/flood_climatology.json`; re-run any time to fill gaps).
+- **Landslide (sạt lở)** — NASA LHASA nowcast probability, queried live from the NASA Earthdata ArcGIS ImageServer (`gis.earthdata.nasa.gov`) for today and tomorrow. Both fetches are best-effort: a rate-limited or unavailable source is skipped without lowering any level or crashing the refresh.
+
 ERA5 is reanalysis data, not direct station observation.
 
 Local forecasts based on representative coordinates should not be described as exact official forecasts for every household or village.
@@ -663,7 +668,10 @@ The risk engine may combine:
 - Terrain features.
 - Historical risk profile.
 - Optional trained model score.
+- Pre-trained GloFAS flood level and NASA LHASA landslide level.
 - Data-quality confidence.
+
+The warning level for each commune-hour is the most alarming of the trained-model/heuristic level, the GloFAS flood level, and the LHASA landslide level (`level = max(...)`). The winning signal sets the dominant disaster type. A missing external signal never lowers a level, and each hour records its `external` flood/landslide inputs so the decision stays auditable.
 
 The final warning level must remain auditable.
 

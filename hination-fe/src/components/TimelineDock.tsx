@@ -8,12 +8,16 @@ import type { ForecastDay } from "@/types/forecast";
 
 export default function TimelineDock({
   days,
+  dayLevels,
   selected,
   onSelect,
   peakLabel,
   dangerous,
 }: {
   days: ForecastDay[];
+  // Alert level per day for the currently selected forecast type; drives the day dots and
+  // labels so the timeline reflects the chosen filter rather than the global maximum.
+  dayLevels?: number[];
   selected: number;
   onSelect: (index: number) => void;
   peakLabel?: string | null;
@@ -67,14 +71,15 @@ export default function TimelineDock({
             const weekday = VI_WEEKDAYS[date.getDay()];
             const dayOfMonth = date.getDate();
             const month = String(date.getMonth() + 1).padStart(2, "0");
-            const isDangerous = day.maximumAlertLevel >= DANGEROUS_LEVEL;
+            const level = dayLevels?.[index] ?? day.maximumAlertLevel;
+            const isDangerous = level >= DANGEROUS_LEVEL;
             return (
               <button
                 key={day.date}
                 type="button"
                 role="tab"
                 aria-selected={selected === index}
-                aria-label={`${weekday} ${dayOfMonth} tháng ${month}, cảnh báo cấp ${day.maximumAlertLevel}${isDangerous ? " (nguy hiểm)" : ""}`}
+                aria-label={`${weekday} ${dayOfMonth} tháng ${month}, cảnh báo cấp ${level}${isDangerous ? " (nguy hiểm)" : ""}`}
                 className={`day-button${isDangerous ? " day-button--danger" : ""}`}
                 onClick={() => onSelect(index)}
               >

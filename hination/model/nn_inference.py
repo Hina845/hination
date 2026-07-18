@@ -49,7 +49,7 @@ LOAI_LABELS = {
     0: "Không",
     1: "Lũ/Sạt lở",
     2: "Dông lốc",
-    3: "Rét/Động đất",
+    3: "Rét",
     4: "Hoàn lưu bão",
 }
 
@@ -58,7 +58,7 @@ LOAI_TO_DOMINANT = {
     0: None,
     1: "flood",       # Lũ / Sạt lở (flood + landslide)
     2: "storm",       # Dông lốc (thunderstorm / squall)
-    3: "wildfire",    # Rét / Động đất — no dedicated bucket; cold/quake maps here loosely
+    3: "wildfire",    # Rét (cold snap) — no dedicated bucket; cold maps here loosely
     4: "storm",       # Hoàn lưu bão (tropical-storm circulation)
 }
 
