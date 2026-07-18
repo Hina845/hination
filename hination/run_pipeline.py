@@ -80,6 +80,9 @@ def step_network_diagnostics():
     except Exception as e:
         print(f"  ⚠️  Network diagnostics failed: {e}")
         return None
+
+
+def main():
     parser = argparse.ArgumentParser(description="Hination full pipeline")
     parser.add_argument(
         "--use-gpu", action="store_true",
