@@ -310,7 +310,13 @@ class DisasterNNPredictor:
         terrain_embed_dim = int(ckpt.get("terrain_embed_dim", 16))
 
         model = _DisasterNNv3(n_input, hidden_dims, n_loai, n_cap, terrain_embed_dim)
-        model.load_state_dict(ckpt["model_state"])
+        
+        # Strip unexpected keys (e.g., terrain_embed.weight when terrain_embed_dim=0)
+        model_state = {k: v for k, v in ckpt["model_state"].items() 
+                       if not k.startswith("terrain_embed")}
+        missing, unexpected = model.load_state_dict(model_state, strict=False)
+        if unexpected:
+            print(f"  [nn_inference] stripped unexpected keys: {unexpected}")
         model.eval()
 
         scaler_mean = np.asarray(ckpt["scaler_mean"], dtype=np.float32)
