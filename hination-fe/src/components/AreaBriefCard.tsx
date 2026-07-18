@@ -1,9 +1,11 @@
 "use client";
 
-import { ArrowClockwise, ArrowSquareOut, Sparkle, Warning, X } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowSquareOut, Drop, Sparkle, Thermometer, Warning, Wind, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { fetchLiveWeather, weatherCodeLabel, type LiveWeather } from "@/lib/live-weather";
 import type { AreaBrief, AreaBriefInput } from "@/types/area-brief";
+import type { Coordinates, DailyWeather } from "@/types/forecast";
 
 // Module-level cache so re-hovering the same area+day is instant and never re-hits
 // the API. The server already caches across accounts; this just avoids client churn.
@@ -15,12 +17,28 @@ type Props = {
   anchor: { x: number; y: number; radius: number } | null;
   levelColor: string;
   levelLabel: string;
+  // Weather shown in the merged card: the headline forecast line, the pre-computed daily
+  // aggregate (fallback while live data loads / on error), and the point to fetch live data for.
+  forecastLine: string;
+  weather: DailyWeather;
+  coordinates: Coordinates;
   onClose: () => void;
   onPointerEnter: () => void;
   onPointerLeave: () => void;
 };
 
 const EDGE = 8; // keep the card this far from the viewport edges
+
+// Today in the province's local time (UTC+7); en-CA renders as YYYY-MM-DD to match forecast dates.
+function localToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
+}
+
+function formatClock(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" }).format(date);
+}
 
 function formatUpdated(generatedAt: number) {
   const time = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(new Date(generatedAt));
@@ -31,13 +49,35 @@ function formatUpdated(generatedAt: number) {
   return `${time} · ${hours} giờ trước`;
 }
 
-export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, onClose, onPointerEnter, onPointerLeave }: Props) {
+export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, forecastLine, weather, coordinates, onClose, onPointerEnter, onPointerLeave }: Props) {
   const cacheKey = cacheKeyFor(input.areaId, input.date);
   const [brief, setBrief] = useState<AreaBrief | null>(() => briefCache.get(cacheKey) ?? null);
   const [loading, setLoading] = useState(!briefCache.has(cacheKey));
   const [error, setError] = useState<string | null>(null);
+  const [live, setLive] = useState<LiveWeather | null>(null);
   const requestRef = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
+
+  const isToday = input.date === localToday();
+
+  // Pull the accurate live reading for the hovered point from Open-Meteo (free, no key).
+  // Silently ignore failures — the card still renders the pre-computed forecast aggregate.
+  useEffect(() => {
+    const controller = new AbortController();
+    setLive(null);
+    fetchLiveWeather(coordinates.lat, coordinates.lng, input.date, controller.signal)
+      .then((data) => setLive(data))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [coordinates.lat, coordinates.lng, input.date]);
+
+  // Prefer the live daily aggregate; fall back to the server's pre-computed values while it loads.
+  const daily = live?.daily;
+  const tMin = daily?.temperatureMinC ?? weather.temperatureMinC;
+  const tMax = daily?.temperatureMaxC ?? weather.temperatureMaxC;
+  const rain = daily?.rainfallTotalMm ?? weather.rainfallTotalMm;
+  const gust = daily?.windGustMaxKmh ?? weather.windGustMaxKmh;
+  const current = isToday ? live?.current ?? null : null;
 
   // Place the card beside the hovered marker: to its right, flipping left when it
   // would overflow, and clamped vertically. Recomputed when the anchor moves or the
@@ -124,6 +164,21 @@ export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, o
           <X />
         </button>
       </header>
+
+      <div className="area-brief__weather">
+        <p className="area-brief__forecast-line">{forecastLine}</p>
+        {current && (
+          <p className="area-brief__now">
+            <span className="area-brief__now-label">Hiện tại {formatClock(current.time)}</span>
+            <span>{weatherCodeLabel(current.conditionCode)} · {current.temperatureC}°C · mưa {current.precipitationMm} mm · ẩm {current.humidityPct}%</span>
+          </p>
+        )}
+        <ul className="area-brief__stats">
+          <li><Thermometer weight="fill" /> {tMin}–{tMax}°C</li>
+          <li><Drop weight="fill" /> {rain} mm</li>
+          <li><Wind weight="fill" /> {gust} km/h</li>
+        </ul>
+      </div>
 
       <div className="area-brief__ai">
         <div className="area-brief__ai-head">

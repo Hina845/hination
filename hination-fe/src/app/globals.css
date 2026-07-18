@@ -846,41 +846,6 @@ button {
 }
 
 /* ---- Marker tooltip ---- */
-.forecast-tooltip {
-  border: 1px solid rgb(255 255 255 / 12%) !important;
-  border-radius: 0.75rem !important;
-  background: #0f172a !important;
-  color: white !important;
-  box-shadow: 0 1rem 2rem rgb(0 0 0 / 32%) !important;
-}
-
-.forecast-tooltip::before {
-  border-top-color: #0f172a !important;
-}
-
-.tooltip-content {
-  display: grid;
-  max-width: 17rem;
-  gap: 0.25rem;
-  line-height: 1.35;
-}
-
-.tooltip-content strong {
-  font-size: 0.9rem;
-}
-
-.tooltip-content span,
-.tooltip-content em {
-  color: #cbd5e1;
-  font-size: 0.72rem;
-}
-
-.tooltip-content em {
-  margin-top: 0.25rem;
-  color: #fde68a;
-  font-style: normal;
-}
-
 .danger-pulse {
   transform-box: fill-box;
   transform-origin: center;
@@ -957,6 +922,64 @@ button {
 .area-brief__close:hover {
   background: rgb(15 23 42 / 6%);
   color: var(--ink);
+}
+
+.area-brief__weather {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.area-brief__forecast-line {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.area-brief__now {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.area-brief__now-label {
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.area-brief__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.area-brief__stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 5%);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.area-brief__stats svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--ink-muted);
 }
 
 .area-brief__ai {

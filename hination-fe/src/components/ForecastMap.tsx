@@ -170,6 +170,15 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
       disasterFilter.kind === "temperature" ? temperatureLevel(area.weather) : displayLevel(area),
     [disasterFilter],
   );
+  // Headline forecast line for an area, following the selected forecast: temperature band,
+  // or the dominant disaster with its level and peak hour. Shared by the merged hover card.
+  const forecastLineFor = useCallback(
+    (area: ForecastArea) =>
+      disasterFilter.kind === "temperature"
+        ? `Nhiệt độ · cấp ${levelForArea(area)}`
+        : `${DISASTER_LABELS[area.danger.dominantDisaster]} · cấp ${displayLevel(area)} · đỉnh ${formatHour(area.danger.peakTime)}`,
+    [disasterFilter, levelForArea],
+  );
   // Areas emphasized on the map: matching dominant disaster, or (temperature) any area
   // that has crossed into an alert band (level ≥ 2).
   const emphasizes = useCallback(
@@ -280,27 +289,12 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
   function bindCommune(feature: Feature<Geometry, CommuneProperties>, layer: Layer) {
     const forecastId = forecastIdFor(feature.properties);
     const area = forecastId ? areaById.get(forecastId) : undefined;
-    if (!area) {
-      layer.bindTooltip(`<strong>${feature.properties.name}</strong><br>Chưa có dữ liệu dự báo.`, { sticky: true });
-      return;
-    }
-    // Rich weather tooltip + interactions live on the commune area itself now that the
-    // dots are gone: hover opens the AI brief, click opens the alert detail card. The
-    // headline line follows the selected forecast (danger type, or temperature band).
-    const forecastLine =
-      disasterFilter.kind === "temperature"
-        ? `Nhiệt độ · cấp ${levelForArea(area)}`
-        : `${DISASTER_LABELS[area.danger.dominantDisaster]} · cấp ${displayLevel(area)} · đỉnh ${formatHour(area.danger.peakTime)}`;
-    layer.bindTooltip(
-      `<div class="tooltip-content">`
-      + `<strong>${area.name}</strong>`
-      + `<span>${forecastLine}</span>`
-      + `<span>${area.weather.temperatureMinC}–${area.weather.temperatureMaxC}°C · mưa ${area.weather.rainfallTotalMm} mm</span>`
-      + `<span>Gió giật ${area.weather.windGustMaxKmh} km/h · ẩm ${area.weather.humidityAveragePct}%</span>`
-      + `<em>${area.danger.message}</em>`
-      + `</div>`,
-      { sticky: true, direction: "top", className: "forecast-tooltip" },
-    );
+    // Areas without forecast data get no hover surface at all — the separate low-info
+    // Leaflet tooltip is gone, so the merged AI + weather card is the one and only popup.
+    if (!area) return;
+    // A single hover surface now that the dots are gone: hover opens the merged AI + weather
+    // card (see AreaBriefCard), click opens the alert detail card. No Leaflet tooltip here —
+    // the weather that used to live in the tooltip is folded into the hover card.
     layer.on({
       mouseover: () => openHover(area, 14 + area.danger.overallRisk * 18),
       mouseout: scheduleHoverClose,
@@ -519,6 +513,9 @@ export default function ForecastMap({ forecast, tileUrl }: { forecast: ForecastR
           anchor={hoverAnchor}
           levelColor={colorForLevel(displayLevel(hoverArea))}
           levelLabel={tierForLevel(displayLevel(hoverArea)).label}
+          forecastLine={forecastLineFor(hoverArea)}
+          weather={hoverArea.weather}
+          coordinates={hoverArea.coordinates}
           onClose={() => {
             cancelHoverClose();
             setHoverAreaId(null);
