@@ -44,6 +44,44 @@ def print_banner():
 """)
 
 
+def step_network_diagnostics():
+    """Diagnose network và apply auto-fix nếu có thể."""
+    print("\n" + "=" * 70)
+    print("STEP 0a: Network Diagnostics")
+    print("=" * 70)
+    
+    try:
+        from ml.network import diagnose_network, patch_socket_for_alternative_dns
+        diag = diagnose_network()
+        
+        for host, info in diag["hosts"].items():
+            mark = "✓" if info["resolves"] else "✗"
+            reach = "reachable" if info["reachable"] else "BLOCKED"
+            print(f"  {mark} {host:42s}  [{reach}]")
+        
+        print("\n  💡 Suggestions:")
+        for s in diag["suggestions"]:
+            print(f"     {s}")
+        
+        # Try to apply DNS patch
+        if not all(info["resolves"] for info in diag["hosts"].values()):
+            print("\n  🔧 Attempting DNS patch (Google/Cloudflare DNS)...")
+            if patch_socket_for_alternative_dns():
+                print("     ✓ DNS patched - retrying connections...")
+                # Re-test
+                import time
+                time.sleep(2)
+                diag2 = diagnose_network()
+                for host, info in diag2["hosts"].items():
+                    mark = "✓" if info["resolves"] else "✗"
+                    print(f"     {mark} {host}")
+        
+        return diag
+    except Exception as e:
+        print(f"  ⚠️  Network diagnostics failed: {e}")
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="Hination full pipeline")
     parser.add_argument(
@@ -51,7 +89,7 @@ def main():
         help="Force GPU detection (auto-fallback if unavailable)",
     )
     parser.add_argument(
-        "--steps", default="era5,terrain,features,train",
+        "--steps", default="network,compute,era5,terrain,features,train",
         help="Comma-separated steps to run (default: all)",
     )
     parser.add_argument(
@@ -62,20 +100,36 @@ def main():
         "--force-cpu", action="store_true",
         help="Force CPU mode (for testing)",
     )
+    parser.add_argument(
+        "--diagnose-network", action="store_true",
+        help="Only run network diagnostics then exit",
+    )
     args = parser.parse_args()
     
     print_banner()
     
     # ============================================================
-    # Step 0: Detect compute backend
+    # Step 0a: Network diagnostics (auto-fix DNS issues)
     # ============================================================
-    print("\n" + "=" * 70)
-    print("STEP 0: Compute Backend Detection")
-    print("=" * 70)
+    if "network" in args.steps:
+        step_network_diagnostics()
+        if args.diagnose_network:
+            return
     
-    from ml.compute import get_compute, detect_compute
-    compute = detect_compute(force_cpu=args.force_cpu)
-    print(compute.summary())
+    # ============================================================
+    # Step 0b: Detect compute backend
+    # ============================================================
+    if "compute" in args.steps:
+        print("\n" + "=" * 70)
+        print("STEP 0b: Compute Backend Detection")
+        print("=" * 70)
+        
+        from ml.compute import get_compute, detect_compute
+        compute = detect_compute(force_cpu=args.force_cpu)
+        print(compute.summary())
+    else:
+        from ml.compute import get_compute
+        compute = get_compute()
     
     # ============================================================
     # Step 1: ERA5 baseline
