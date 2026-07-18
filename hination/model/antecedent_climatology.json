@@ -1,0 +1,307 @@
+{
+  "source": "ERA5 archive (Open-Meteo) monthly means from local cache",
+  "features": [
+    "rain",
+    "temperature",
+    "windspeed",
+    "humidity"
+  ],
+  "province": {
+    "6": {
+      "rain": 13.505,
+      "temperature": 23.091,
+      "windspeed": 8.359,
+      "humidity": 89.353
+    },
+    "7": {
+      "rain": 14.189,
+      "temperature": 22.971,
+      "windspeed": 7.542,
+      "humidity": 90.011
+    },
+    "1": {
+      "rain": 2.067,
+      "temperature": 13.631,
+      "windspeed": 7.753,
+      "humidity": 82.809
+    },
+    "2": {
+      "rain": 1.656,
+      "temperature": 15.901,
+      "windspeed": 9.189,
+      "humidity": 76.461
+    },
+    "3": {
+      "rain": 2.392,
+      "temperature": 19.366,
+      "windspeed": 10.195,
+      "humidity": 71.772
+    },
+    "4": {
+      "rain": 5.008,
+      "temperature": 21.567,
+      "windspeed": 9.779,
+      "humidity": 75.867
+    },
+    "5": {
+      "rain": 8.671,
+      "temperature": 22.778,
+      "windspeed": 8.326,
+      "humidity": 82.6
+    },
+    "8": {
+      "rain": 13.054,
+      "temperature": 22.332,
+      "windspeed": 6.436,
+      "humidity": 90.81
+    },
+    "9": {
+      "rain": 7.819,
+      "temperature": 21.959,
+      "windspeed": 6.625,
+      "humidity": 88.381
+    },
+    "10": {
+      "rain": 3.641,
+      "temperature": 20.157,
+      "windspeed": 7.24,
+      "humidity": 83.902
+    },
+    "11": {
+      "rain": 1.981,
+      "temperature": 17.628,
+      "windspeed": 6.883,
+      "humidity": 82.534
+    },
+    "12": {
+      "rain": 1.69,
+      "temperature": 14.187,
+      "windspeed": 7.579,
+      "humidity": 81.809
+    }
+  },
+  "areas": {
+    "commune_19537915": {
+      "1": {
+        "rain": 1.815,
+        "temperature": 15.983,
+        "windspeed": 7.659,
+        "humidity": 84.524
+      },
+      "2": {
+        "rain": 1.308,
+        "temperature": 18.18,
+        "windspeed": 8.995,
+        "humidity": 78.338
+      },
+      "3": {
+        "rain": 1.992,
+        "temperature": 21.744,
+        "windspeed": 10.043,
+        "humidity": 72.45
+      },
+      "4": {
+        "rain": 4.572,
+        "temperature": 23.925,
+        "windspeed": 9.497,
+        "humidity": 76.885
+      },
+      "5": {
+        "rain": 9.135,
+        "temperature": 25.267,
+        "windspeed": 7.836,
+        "humidity": 83.49
+      },
+      "6": {
+        "rain": 14.421,
+        "temperature": 25.292,
+        "windspeed": 6.814,
+        "humidity": 90.08
+      },
+      "7": {
+        "rain": 14.512,
+        "temperature": 25.291,
+        "windspeed": 6.623,
+        "humidity": 89.932
+      },
+      "8": {
+        "rain": 14.181,
+        "temperature": 24.998,
+        "windspeed": 6.116,
+        "humidity": 91.054
+      },
+      "9": {
+        "rain": 7.933,
+        "temperature": 24.614,
+        "windspeed": 6.451,
+        "humidity": 88.727
+      },
+      "10": {
+        "rain": 3.531,
+        "temperature": 22.931,
+        "windspeed": 6.97,
+        "humidity": 84.229
+      },
+      "11": {
+        "rain": 2.093,
+        "temperature": 20.182,
+        "windspeed": 6.421,
+        "humidity": 84.176
+      },
+      "12": {
+        "rain": 1.744,
+        "temperature": 16.654,
+        "windspeed": 7.352,
+        "humidity": 83.708
+      }
+    },
+    "commune_19537916": {
+      "1": {
+        "rain": 2.577,
+        "temperature": 14.055,
+        "windspeed": 7.447,
+        "humidity": 83.714
+      },
+      "2": {
+        "rain": 1.974,
+        "temperature": 16.314,
+        "windspeed": 8.966,
+        "humidity": 76.788
+      },
+      "3": {
+        "rain": 2.782,
+        "temperature": 19.78,
+        "windspeed": 10.119,
+        "humidity": 71.079
+      },
+      "4": {
+        "rain": 6.104,
+        "temperature": 21.922,
+        "windspeed": 9.705,
+        "humidity": 75.227
+      },
+      "5": {
+        "rain": 10.34,
+        "temperature": 22.942,
+        "windspeed": 8.095,
+        "humidity": 82.948
+      },
+      "6": {
+        "rain": 12.357,
+        "temperature": 22.911,
+        "windspeed": 7.439,
+        "humidity": 89.744
+      },
+      "7": {
+        "rain": 13.63,
+        "temperature": 22.845,
+        "windspeed": 6.955,
+        "humidity": 90.031
+      },
+      "8": {
+        "rain": 13.229,
+        "temperature": 22.585,
+        "windspeed": 6.393,
+        "humidity": 90.831
+      },
+      "9": {
+        "rain": 8.511,
+        "temperature": 22.236,
+        "windspeed": 6.695,
+        "humidity": 88.008
+      },
+      "10": {
+        "rain": 4.863,
+        "temperature": 20.469,
+        "windspeed": 7.124,
+        "humidity": 84.329
+      },
+      "11": {
+        "rain": 2.684,
+        "temperature": 17.949,
+        "windspeed": 6.654,
+        "humidity": 83.66
+      },
+      "12": {
+        "rain": 2.205,
+        "temperature": 14.7,
+        "windspeed": 7.28,
+        "humidity": 83.448
+      }
+    },
+    "commune_19571184": {
+      "1": {
+        "rain": 1.808,
+        "temperature": 10.854,
+        "windspeed": 8.153,
+        "humidity": 80.19
+      },
+      "2": {
+        "rain": 1.688,
+        "temperature": 13.21,
+        "windspeed": 9.606,
+        "humidity": 74.257
+      },
+      "3": {
+        "rain": 2.402,
+        "temperature": 16.574,
+        "windspeed": 10.423,
+        "humidity": 71.788
+      },
+      "4": {
+        "rain": 4.349,
+        "temperature": 18.854,
+        "windspeed": 10.137,
+        "humidity": 75.49
+      },
+      "5": {
+        "rain": 6.538,
+        "temperature": 20.124,
+        "windspeed": 9.047,
+        "humidity": 81.363
+      },
+      "6": {
+        "rain": 9.268,
+        "temperature": 20.114,
+        "windspeed": 8.9,
+        "humidity": 87.195
+      },
+      "7": {
+        "rain": 10.534,
+        "temperature": 19.782,
+        "windspeed": 7.481,
+        "humidity": 89.244
+      },
+      "8": {
+        "rain": 11.752,
+        "temperature": 19.414,
+        "windspeed": 6.8,
+        "humidity": 90.546
+      },
+      "9": {
+        "rain": 7.013,
+        "temperature": 19.025,
+        "windspeed": 6.727,
+        "humidity": 88.408
+      },
+      "10": {
+        "rain": 2.526,
+        "temperature": 17.161,
+        "windspeed": 7.616,
+        "humidity": 83.159
+      },
+      "11": {
+        "rain": 1.174,
+        "temperature": 14.912,
+        "windspeed": 7.546,
+        "humidity": 79.869
+      },
+      "12": {
+        "rain": 1.126,
+        "temperature": 11.36,
+        "windspeed": 8.091,
+        "humidity": 78.391
+      }
+    }
+  }
+}

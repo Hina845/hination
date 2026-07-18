@@ -88,6 +88,9 @@ CLIMATOLOGY_PATH = Path(
         str(Path(__file__).resolve().parents[1] / "data" / "flood_climatology.json"),
     )
 )
+# Committed fallback shipped next to this module (data/ is gitignored, so the runtime copy
+# above is absent on a fresh clone). Used only when the runtime file is missing/empty.
+CLIMATOLOGY_SEED_PATH = Path(__file__).parent / "flood_climatology.json"
 CLIMATOLOGY_START = os.getenv("HINATION_FLOOD_CLIMATOLOGY_START", "1994-01-01")
 CLIMATOLOGY_END = os.getenv("HINATION_FLOOD_CLIMATOLOGY_END", "2023-12-31")
 
@@ -201,12 +204,20 @@ def _chunks(seq: list, size: int):
 # ============================================================
 
 def load_flood_climatology() -> dict[str, dict]:
-    """Load cached per-commune discharge thresholds; {} if not built yet."""
-    try:
-        with CLIMATOLOGY_PATH.open(encoding="utf-8") as fh:
-            return json.load(fh).get("areas", {})
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
+    """
+    Load cached per-commune discharge thresholds. Prefers the runtime file under data/
+    (rebuilt by build_flood_climatology) and falls back to the committed seed shipped
+    next to this module, so a fresh prod clone still has flood baselines. {} if neither.
+    """
+    for path in (CLIMATOLOGY_PATH, CLIMATOLOGY_SEED_PATH):
+        try:
+            with path.open(encoding="utf-8") as fh:
+                areas = json.load(fh).get("areas", {})
+            if areas:
+                return areas
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            continue
+    return {}
 
 
 def fetch_flood_levels(areas: dict | None = None) -> dict[str, dict[int, dict]]:
