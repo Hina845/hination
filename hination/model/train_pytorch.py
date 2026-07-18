@@ -2,6 +2,11 @@
 PyTorch Multi-Task Disaster Prediction v3
 ======================================
 
+Multi-output targets:
+  1. thien_tai      → binary  (0/1)
+  2. loai_thien_tai → multiclass (0=None · 1=Lũ/Sạt lở · 2=Dông lốc · 3=Rét · 4=Hoàn lưu bão)
+  3. cap_thien_tai  → ordinal (0=Không · 1=Nhẹ · 2=Trung bình · 3=Nghiêm trọng · 4=Thảm họa)
+
 Improvements over v2:
 1. Extended features: wind_gusts, pressure, cloud_cover, pressure_drop
 2. Attention mechanism for temporal patterns
@@ -991,7 +996,7 @@ def main():
     print(f"\nloai_thien_tai (rows=true, cols=pred):")
     cm_loai = confusion_matrix(all_loai_labels, all_loai_preds, labels=[0, 1, 2, 3, 4])
     print(np.array2string(cm_loai))
-    print("  Labels: 0=None · 1=Lũ/Sạt lở · 2=Dông lốc · 3=Rét/Động đất · 4=Hoàn lưu bão")
+    print("  Labels: 0=None · 1=Lũ/Sạt lở · 2=Dông lốc · 3=Rét · 4=Hoàn lưu bão")
 
     print(f"\ncap_thien_tai (rows=true, cols=pred):")
     cm_cap = confusion_matrix(all_cap_labels, all_cap_preds, labels=[0, 1, 2, 3, 4])

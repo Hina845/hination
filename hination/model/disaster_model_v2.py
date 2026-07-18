@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from model.areas import FORECAST_AREAS
+from model.hazard_providers import blend_external, fetch_flood_levels, fetch_landslide_levels
 from model.io_utils import atomic_write_json
 
 warnings.filterwarnings("ignore")
@@ -718,10 +719,31 @@ def run_disaster_forecast(
     else:
         print(f"\n Trained model not available - using heuristic rules")
 
+    # Pre-trained hazard signals, fetched once for ALL communes (batched):
+    #   flood     — GloFAS discharge vs per-commune climatology (7-day)
+    #   landslide — NASA LHASA nowcast probability (today + tomorrow)
+    # Both are best-effort: a failed fetch returns {} and simply doesn't
+    # contribute — it never lowers a level and never raises.
+    try:
+        flood_levels = fetch_flood_levels()
+    except Exception as exc:
+        print(f"  [hazard] flood fetch failed, continuing without it: {exc}")
+        flood_levels = {}
+    try:
+        landslide_levels = fetch_landslide_levels()
+    except Exception as exc:
+        print(f"  [hazard] landslide fetch failed, continuing without it: {exc}")
+        landslide_levels = {}
+    print(
+        f"\n🌊 Flood signal: {len(flood_levels)} communes | "
+        f"⛰️  Landslide (LHASA) signal: {len(landslide_levels)} communes"
+    )
+
     # Compute risks per commune
     disaster_forecast = {}
     alerts = []
     seeded_count = 0
+    external_upgrades = 0  # hours whose level was raised by a flood/landslide signal
 
     if predictor is not None:
         print("\n🧠 Model predictions per commune (peak of 7-day horizon):")
@@ -732,6 +754,10 @@ def run_disaster_forecast(
 
         terrain = terrain_for_area(did, p)
         hours = p["forecast_hours"]
+
+        # Pre-fetched external hazard signals for this commune, keyed by day_offset.
+        flood_by_day = flood_levels.get(did, {})
+        landslide_by_day = landslide_levels.get(did, {})
 
         # Pre-compute rolling precip sums
         precip_vals = [h["precipitation"] for h in hours]
@@ -825,6 +851,23 @@ def run_disaster_forecast(
                 dominant = heuristic_dominant
                 nn_block = None
 
+            # Blend the pre-trained flood/landslide signals over the NN/heuristic
+            # level (per forecast day). The more alarming signal wins; a missing
+            # signal never lowers anything.
+            day = h["day_offset"]
+            flood_day = flood_by_day.get(day)
+            landslide_day = landslide_by_day.get(day)
+            blended_level, blended_dominant, overall_risk = blend_external(
+                level, dominant, overall_risk, flood_day, landslide_day,
+            )
+            if blended_level > level:
+                external_upgrades += 1
+            level, dominant = blended_level, blended_dominant
+            external_block = {
+                "flood": flood_day,          # {"discharge", "level"} or None
+                "landslide": landslide_day,  # {"prob", "level"} or None
+            } if (flood_day or landslide_day) else None
+
             hour_disaster = {
                 "datetime": h["datetime"],
                 "hour_offset": h["hour_offset"],
@@ -844,6 +887,7 @@ def run_disaster_forecast(
                 "message_vi": generate_vi_message(level, dominant, h, precip_24h),
                 "terrain_confidence": terrain.confidence,  # NEW: confidence
                 "nn": nn_block,  # NEW: trained-model prediction (None if heuristic)
+                "external": external_block,  # NEW: GloFAS flood + LHASA landslide signals
             }
             max_risk = overall_risk
 
@@ -890,14 +934,17 @@ def run_disaster_forecast(
         "method": "PyTorch multi-task NN + heuristic breakdown + SRTM Terrain + VNDMS",
         "nn_model_loaded": predictor is not None,
         "antecedent_seeded_areas": seeded_count,
+        "flood_signal_areas": len(flood_levels),
+        "landslide_signal_areas": len(landslide_levels),
+        "external_level_upgrades": external_upgrades,
         "forecast_horizon_hours": 168,
         "districts": disaster_forecast,
         "alerts": sorted(alerts, key=lambda x: -x["level"])[:50],
         "vndms_standards": VNDMS,
         "methodology": {
-            "overall": "trained PyTorch multi-task NN (thien_tai/loai/cap) when available, else heuristic max",
-            "flood": "heuristic breakdown: precip + accumulations + API + terrain",
-            "landslide": "heuristic breakdown: slope + soil + API + history (confidence-adjusted)",
+            "overall": "max(trained NN / heuristic, GloFAS flood, LHASA landslide) — most alarming wins",
+            "flood": "pre-trained GloFAS v4 river discharge (Open-Meteo) vs per-commune climatology percentiles",
+            "landslide": "pre-trained NASA LHASA nowcast probability (today/tomorrow) + heuristic breakdown",
             "storm": "heuristic breakdown: wind + precip + pressure + clouds",
             "wildfire": "heuristic breakdown: temp + humidity + wind + dry days",
         },
@@ -936,6 +983,8 @@ def run_disaster_forecast(
     print(f" DISASTER FORECAST v2 COMPLETE")
     print(f"  Trained model: {'Loaded' if predictor is not None else 'Not available (heuristic)'}")
     print(f"  Antecedent-seeded areas: {seeded_count}/{len(disaster_forecast)}")
+    print(f"  Pre-trained hazard signals: flood={len(flood_levels)} | landslide(LHASA)={len(landslide_levels)} communes")
+    print(f"  Hours upgraded by an external signal: {external_upgrades}")
     print(f"  Terrains: calibrated={sum(1 for d in disaster_forecast.values() if d['terrain']['profile_source']=='calibrated')} | "
           f"derived={sum(1 for d in disaster_forecast.values() if d['terrain']['profile_source']!='calibrated')}")
     print(f"{'=' * 70}")

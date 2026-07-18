@@ -59,3 +59,14 @@ describe("forecast playback", () => {
     expect(screen.getByTestId("selected")).toHaveTextContent("5");
   });
 });
+
+describe("selected-forecast labels", () => {
+  it("labels each day with the selected forecast's level instead of the global maximum", () => {
+    const dayLevels = [1, 5, 3, 2, 4, 1, 2];
+    render(<TimelineDock days={days} dayLevels={dayLevels} selected={0} onSelect={() => {}} />);
+    // Day 19 July → level 5, flagged dangerous by the timeline.
+    expect(screen.getByRole("tab", { name: /19 tháng 07, cảnh báo cấp 5 \(nguy hiểm\)/ })).toBeInTheDocument();
+    // Day 18 July → level 1, not dangerous, even though the day object's maximumAlertLevel is 1.
+    expect(screen.getByRole("tab", { name: /18 tháng 07, cảnh báo cấp 1$/ })).toBeInTheDocument();
+  });
+});
