@@ -707,6 +707,9 @@ def run_disaster_forecast(
     alerts = []
     seeded_count = 0
 
+    if predictor is not None:
+        print("\n🧠 Model predictions per commune (peak of 7-day horizon):")
+
     for did, p in gfs_data["districts"].items():
         if did not in FORECAST_AREAS:
             continue
@@ -729,6 +732,21 @@ def run_disaster_forecast(
 
         # Trained-model prediction per forecast day (empty dict -> heuristic only)
         nn_by_day = predict_area_days(predictor, hours, seed_series)
+
+        # Log what the NN actually predicted for this commune: the worst day
+        # over the 7-day horizon (probability, disaster type, severity band).
+        if nn_by_day:
+            peak_day, peak = max(nn_by_day.items(), key=lambda kv: kv[1]["prob"])
+            seed_tag = "seeded" if seed_series else "no-seed"
+            print(
+                f"   • {terrain.name:<25s} NN→ day+{peak_day}: "
+                f"P(disaster)={peak['prob']:.2f} | "
+                f"type={peak['type_label']} | "
+                f"sev={peak['severity_label']} "
+                f"(cap {peak['cap_idx']}) [{seed_tag}]"
+            )
+        elif predictor is not None:
+            print(f"   • {terrain.name:<25s} NN→ (no daily series, heuristic only)")
 
         disaster_hours = []
 

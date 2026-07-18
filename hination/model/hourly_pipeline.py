@@ -165,6 +165,39 @@ def get_hour_value(data, var, idx):
     return float(vals[idx])
 
 
+def _clean(vals):
+    """Drop None gaps so summaries don't choke on missing hours."""
+    return [float(v) for v in (vals or []) if v is not None]
+
+
+def log_fetch_sample(name, data):
+    """
+    Log a small slice of the freshly-fetched GFS payload so the console shows
+    WHAT actually came back (not just an hour count): the first forecast hour's
+    values plus the 168h horizon peaks the model will chew on.
+    """
+    hd = data['hourly']
+    times = hd.get('time') or []
+    n = len(times)
+    temp = _clean(hd.get('temperature_2m'))
+    rain = _clean(hd.get('precipitation'))
+    gust = _clean(hd.get('wind_gusts_10m'))
+    hum = _clean(hd.get('relative_humidity_2m'))
+
+    t0 = times[0] if times else '?'
+    temp0 = temp[0] if temp else 0.0
+    rain0 = rain[0] if rain else 0.0
+    gust0 = gust[0] if gust else 0.0
+    hum0 = hum[0] if hum else 0.0
+
+    print(f"   • {name:<25s} ✓ {n}h")
+    print(f"       ↳ @ {t0}: temp {temp0:.1f}°C | rain {rain0:.1f}mm | "
+          f"gust {gust0:.0f}km/h | RH {hum0:.0f}%")
+    print(f"       ↳ 168h horizon: Σrain {sum(rain):.0f}mm | "
+          f"peak gust {max(gust) if gust else 0:.0f}km/h | "
+          f"temp {min(temp) if temp else 0:.0f}–{max(temp) if temp else 0:.0f}°C")
+
+
 def run_pipeline(forecast_run_id=None):
     """
     Main pipeline:
@@ -184,13 +217,12 @@ def run_pipeline(forecast_run_id=None):
     # ===========================================================
     all_data = {}
 
-    print(f"\n📡 Fetching {len(DISTRICTS)} communes/wards...")
+    print(f"\n📡 Fetching {len(DISTRICTS)} communes/wards from {GFS_MODEL} ({GFS_FORECAST_URL})...")
     for did, info in DISTRICTS.items():
         data = fetch_hourly(info['lat'], info['lon'])
         if 'hourly' in data:
             all_data[did] = data
-            hours = len(data['hourly'].get('time', []))
-            print(f"   • {info['name']:<25s} ✓ {hours}h")
+            log_fetch_sample(info['name'], data)
         else:
             print(f"   • {info['name']:<25s} ✗ {data.get('error', 'fail')[:30]}")
 

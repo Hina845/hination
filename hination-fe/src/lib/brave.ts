@@ -1,7 +1,10 @@
 import { logStep } from "@/lib/log";
 import type { NewsSource } from "@/types/area-brief";
 
-const BRAVE_BASE_URL = process.env.BRAVE_SEARCH_BASE_URL ?? "https://api.search.brave.com/res/v1/web/search";
+// Use `||` (not `??`) so a defined-but-empty env var — e.g. docker-compose's
+// `${BRAVE_SEARCH_BASE_URL:-}` expanding to "" — still falls back to the public
+// endpoint. An empty base would make fetch see a relative "?q=..." URL and throw.
+const BRAVE_BASE_URL = process.env.BRAVE_SEARCH_BASE_URL || "https://api.search.brave.com/res/v1/web/search";
 
 type BraveResult = {
   title?: string;

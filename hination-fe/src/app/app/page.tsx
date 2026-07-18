@@ -55,5 +55,7 @@ export default async function AppPage() {
     );
   }
 
-  return <ForecastMapShell forecast={applyOverallLevels(forecast)} tileUrl={process.env.HINATION_TILE_URL ?? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"} />;
+  // Use `||` (not `??`) so an env var that is defined-but-empty — e.g. docker-compose's
+  // `${HINATION_TILE_URL:-}` expanding to "" — still falls back to the OSM default.
+  return <ForecastMapShell forecast={applyOverallLevels(forecast)} tileUrl={process.env.HINATION_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"} />;
 }

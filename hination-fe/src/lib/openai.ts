@@ -3,7 +3,9 @@ import { logStep } from "@/lib/log";
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export function currentModel() {
-  return process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  // `||` (not `??`): docker-compose injects `${OPENAI_MODEL:-}` as "" when unset,
+  // which is defined-but-empty and would slip past `??`, sending an empty model.
+  return process.env.OPENAI_MODEL || "gpt-4o-mini";
 }
 
 function postChat(baseUrl: string, key: string, messages: ChatMessage[], jsonMode: boolean) {
@@ -32,7 +34,9 @@ function postChat(baseUrl: string, key: string, messages: ChatMessage[], jsonMod
  * (caller parses it — it may still be wrapped in prose/code fences).
  */
 export async function chatJSON(messages: ChatMessage[]): Promise<string> {
-  const baseUrl = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1").replace(/\/+$/, "");
+  // `||` (not `??`): an empty `${OPENAI_BASE_URL:-}` from docker-compose would make
+  // fetch see a relative "/chat/completions" URL and throw — fall back to the default.
+  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
     throw new Error("OPENAI_API_KEY chưa được cấu hình");
