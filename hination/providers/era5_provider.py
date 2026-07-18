@@ -49,7 +49,7 @@ import requests
 # Constants
 # ============================================================
 
-OPEN_METEO_BASE = "https://archive-api.open-meteo.com/v1/archive"
+OPEN_METEO_BASE = os.getenv("HINATION_ERA5_ARCHIVE_URL", "https://archive-api.open-meteo.com/v1/archive")
 OPEN_METEO_DAILY_VARS = [
     "temperature_2m_max",
     "temperature_2m_min",

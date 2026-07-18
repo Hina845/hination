@@ -10,9 +10,17 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONPATH=/app/hination
 
-# Install dependencies first for layer caching (all deps ship manylinux wheels).
+# CPU-only PyTorch first (its own layer so it caches across dep changes).
+# Pulled from the CPU index to avoid the ~800MB CUDA build. The trained
+# disaster net (models/disaster_nn.pt) needs torch; without it the pipeline
+# silently falls back to heuristics.
+RUN pip install --no-cache-dir --timeout 180 --retries 10 \
+        --index-url https://download.pytorch.org/whl/cpu \
+        torch
+
+# Install remaining dependencies (all ship manylinux wheels).
 COPY hination/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout 180 --retries 10 -r requirements.txt
 
 # Application code (data/predictions ships baked so the API serves on first boot).
 COPY hination/ ./

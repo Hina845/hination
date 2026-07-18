@@ -4,12 +4,27 @@
 #   Bring the whole stack up (builds all images in parallel, then runs):
 #       docker compose up --build -d
 #
-#   Optionally also run the hourly forecast refresher:
-#       docker compose --profile scheduler up --build -d
+#   The `scheduler` service pulls live NOAA GFS weather on start and every
+#   HINATION_REFRESH_INTERVAL_HOURS, writing the forecast the API serves.
+#   Tune the pipeline via a root .env file (see .env.example).
 #
-# Ports:  nginx 80  |  frontend 1111  |  backend 1112
+# Ports:  nginx 8083 |  frontend 1111  |  backend 1112
 # ===========================================================================
 name: hination
+
+# Shared backend/pipeline config — merged into both the API and the scheduler
+# so they agree on data location and live-GFS settings. Overridable via .env.
+x-pipeline-env: &pipeline-env
+  HINATION_PREDICTIONS_DIR: /app/hination/data/predictions
+  HINATION_USE_V2_MODEL: ${HINATION_USE_V2_MODEL:-true}
+  HINATION_GFS_URL: ${HINATION_GFS_URL:-https://api.open-meteo.com/v1/forecast}
+  HINATION_GFS_MODEL: ${HINATION_GFS_MODEL:-gfs_seamless}
+  HINATION_FORECAST_DAYS: ${HINATION_FORECAST_DAYS:-7}
+  HINATION_TIMEZONE: ${HINATION_TIMEZONE:-Asia/Ho_Chi_Minh}
+  HINATION_GFS_TIMEOUT: ${HINATION_GFS_TIMEOUT:-30}
+  HINATION_SEED_ANTECEDENT: ${HINATION_SEED_ANTECEDENT:-true}
+  HINATION_ERA5_ARCHIVE_URL: ${HINATION_ERA5_ARCHIVE_URL:-https://archive-api.open-meteo.com/v1/archive}
+  HINATION_REFRESH_INTERVAL_HOURS: ${HINATION_REFRESH_INTERVAL_HOURS:-1}
 
 services:
   # ---- FastAPI forecast API (Python) -----------------------------------
@@ -19,8 +34,7 @@ services:
       dockerfile: Dockerfile.backend
     image: hination-backend
     environment:
-      HINATION_PREDICTIONS_DIR: /app/hination/data/predictions
-      HINATION_USE_V2_MODEL: "true"
+      <<: *pipeline-env
     volumes:
       - backend-data:/app/hination/data
     ports:
@@ -85,7 +99,9 @@ services:
       - backend
     restart: unless-stopped
 
-  # ---- Hourly forecast refresher (opt-in: --profile scheduler) ---------
+  # ---- Live forecast refresher (runs by default) -----------------------
+  # Pulls NOAA GFS on start + every HINATION_REFRESH_INTERVAL_HOURS and writes
+  # the forecast JSON into the shared backend-data volume the API reads from.
   scheduler:
     image: hination-backend
     build:
@@ -93,8 +109,7 @@ services:
       dockerfile: Dockerfile.backend
     command: ["python", "-m", "model.scheduler"]
     environment:
-      HINATION_PREDICTIONS_DIR: /app/hination/data/predictions
-      HINATION_USE_V2_MODEL: "true"
+      <<: *pipeline-env
     volumes:
       - backend-data:/app/hination/data
     networks:
@@ -102,8 +117,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    profiles:
-      - scheduler
 
 # All services share one explicit bridge network so service-name DNS
 # (frontend -> http://backend:1112) always resolves, and the stack stays

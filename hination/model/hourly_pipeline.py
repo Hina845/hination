@@ -13,6 +13,7 @@ Reference:
 - Chúng ta dùng GFS Seamless (giống Windy default)
 """
 
+import os
 import warnings
 import requests
 from datetime import datetime
@@ -22,6 +23,19 @@ from model.areas import FORECAST_AREAS
 from model.io_utils import atomic_write_json
 
 warnings.filterwarnings('ignore')
+
+# ============================================================
+# Live GFS source config (override via .env / environment)
+# ============================================================
+# The forward forecast is pulled live from NOAA GFS through Open-Meteo's free
+# `gfs_seamless` model. Every knob below is env-overridable so the data source
+# can be tuned (or pointed at a self-hosted Open-Meteo) without code changes.
+GFS_FORECAST_URL = os.getenv("HINATION_GFS_URL", "https://api.open-meteo.com/v1/forecast")
+GFS_MODEL = os.getenv("HINATION_GFS_MODEL", "gfs_seamless")
+FORECAST_DAYS = int(os.getenv("HINATION_FORECAST_DAYS", "7"))
+FORECAST_TIMEZONE = os.getenv("HINATION_TIMEZONE", "Asia/Ho_Chi_Minh")
+GFS_TIMEOUT = int(os.getenv("HINATION_GFS_TIMEOUT", "30"))
+FORECAST_HOURS = FORECAST_DAYS * 24
 
 # ============================================================
 # Current communes/wards in Điện Biên
@@ -65,21 +79,21 @@ HOURLY_VARS = [
 # Fetching from Open-Meteo (GFS Seamless)
 # ============================================================
 
-def fetch_hourly(lat, lon, hours=168, models='gfs_seamless'):
-    """Fetch 168 hours of hourly forecast from GFS"""
+def fetch_hourly(lat, lon, hours=FORECAST_HOURS, models=GFS_MODEL):
+    """Fetch `FORECAST_DAYS`×24 hours of live GFS forecast (via Open-Meteo)."""
     params = {
         'latitude': lat,
         'longitude': lon,
         'hourly': ','.join(HOURLY_VARS),
-        'timezone': 'Asia/Ho_Chi_Minh',
-        'forecast_days': 7,
+        'timezone': FORECAST_TIMEZONE,
+        'forecast_days': FORECAST_DAYS,
         'models': models
     }
     try:
         resp = requests.get(
-            'https://api.open-meteo.com/v1/forecast',
+            GFS_FORECAST_URL,
             params=params,
-            timeout=30
+            timeout=GFS_TIMEOUT
         )
         data = resp.json()
         return data if 'error' not in data else {'error': data.get('reason', 'unknown')}
@@ -199,7 +213,7 @@ def run_pipeline(forecast_run_id=None):
             continue
 
         d = all_data[did]['hourly']
-        T = min(168, len(d['time']))
+        T = min(FORECAST_HOURS, len(d['time']))
 
         hourly_data = []
         for h in range(T):
@@ -257,9 +271,9 @@ def run_pipeline(forecast_run_id=None):
         'generated_at': datetime.now().isoformat(),
         'model': 'gfs_seamless_direct',
         'source': 'NOAA GFS 13km (via Open-Meteo)',
-        'forecast_horizon_hours': 168,
+        'forecast_horizon_hours': FORECAST_HOURS,
         'hours_per_day': 24,
-        'days': 7,
+        'days': FORECAST_DAYS,
         'districts': predictions,
         'neighboring_provinces': [
             {'id': pid, 'name': info['name'], 'coordinates': {'lat': info['lat'], 'lon': info['lon']}}

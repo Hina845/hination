@@ -19,6 +19,7 @@ from model.hourly_pipeline import run_pipeline
 
 
 MODEL_DIR = Path(os.getenv("HINATION_MODEL_DIR", "models"))
+REFRESH_INTERVAL_HOURS = int(os.getenv("HINATION_REFRESH_INTERVAL_HOURS", "1"))
 
 
 def refresh_forecasts() -> str:
@@ -37,7 +38,7 @@ def refresh_forecasts() -> str:
 
 def start_scheduler() -> None:
     refresh_forecasts()
-    schedule.every(1).hours.do(refresh_forecasts)
+    schedule.every(REFRESH_INTERVAL_HOURS).hours.do(refresh_forecasts)
     while True:
         schedule.run_pending()
         time.sleep(60)

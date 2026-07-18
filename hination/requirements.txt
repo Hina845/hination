@@ -8,6 +8,9 @@ pydantic>=2.0.0
 # Forecast source
 requests>=2.31.0
 
+# Hourly refresh scheduler (model/scheduler.py)
+schedule>=1.2.0
+
 # Earth Engine (NOAA GFS0P25 historical reanalysis)
 earthengine-api>=0.1.420
 

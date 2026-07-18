@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DB-MWAI",
+  title: "Điện Biên Forecast",
   description: "Bản đồ dự báo và cảnh báo thiên tai Điện Biên",
 };
 
