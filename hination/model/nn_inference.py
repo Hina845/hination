@@ -437,11 +437,15 @@ def _DisasterNNv3(
                 nn.Dropout(0.3),
             )
             
-            # Deep backbone
-            self.backbone = nn.ModuleList([
-                ResidualBlock(hidden_dims[0], 0.3)
-                for _ in hidden_dims
-            ])
+            # Deep backbone with Linear projections for dimension transitions
+            # Architecture: [256] → Linear(256,128) → [128] → Linear(128,64) → [64] → Linear(64,32) → [32]
+            self.backbone = nn.ModuleList()
+            prev_dim = hidden_dims[0]
+            for i, hdim in enumerate(hidden_dims[1:], 1):
+                if prev_dim != hdim:
+                    self.backbone.append(nn.Linear(prev_dim, hdim))
+                self.backbone.append(ResidualBlock(hdim, 0.3))
+                prev_dim = hdim
             
             # Feature attention
             self.feature_attention = nn.Sequential(
