@@ -83,7 +83,7 @@ AGGS = ["mean", "std", "max", "min"]
 ROLLING_FEATURES = len(FEATURE_COLS) * len(WINDOWS) * len(AGGS)  # 7 × 3 × 4 = 84
 
 # Derived features
-DERIVED_FEATURES = 17  # Extended interactions and VNDMS indicators
+DERIVED_FEATURES = 16  # Extended interactions and VNDMS indicators
 
 # Total input features (before terrain embedding)
 N_RAW_FEATURES = len(FEATURE_COLS) + ROLLING_FEATURES + DERIVED_FEATURES  # 7 + 84 + 17 = 108
