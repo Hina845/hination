@@ -36,10 +36,19 @@ from __future__ import annotations
 import json
 import math
 import statistics
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import requests
+
+from ml.resilient import (
+    ResilientHTTPClient,
+    TERRAIN_ENDPOINTS,
+    get_http_client,
+)
 
 # GEE imports - optional, only required when using GEE backend
 try:
@@ -238,6 +247,13 @@ class OpenElevationProvider(TerrainProvider):
         self.cache_dir = cache_dir
         if cache_dir:
             cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Resilient client: auto-fallback qua nhiều terrain APIs
+        self._http = get_http_client(
+            name="terrain",
+            endpoints=TERRAIN_ENDPOINTS,
+            cache_dir=cache_dir,
+        )
     
     def _grid_points(
         self, lat: float, lon: float, radius_m: float = 10_000, n: int = 5,
@@ -279,17 +295,14 @@ class OpenElevationProvider(TerrainProvider):
         
         points = self._grid_points(lat, lon, n=5)
         
-        # Open-Elevation API limit: ~1000 locations/request
-        # 5x5 = 25 points, OK
+        # Try Open-Elevation first (5x5 grid)
         locations = [{"latitude": la, "longitude": lo} for la, lo in points]
         
-        resp = requests.post(
-            self.BASE_URL,
-            json={"locations": locations},
-            timeout=60,
+        data = self._http.request(
+            body={"locations": locations},
+            allow_cache=True,
+            allow_stale_cache=True,
         )
-        resp.raise_for_status()
-        data = resp.json()
         
         elevations = [r["elevation"] for r in data["results"]]
         

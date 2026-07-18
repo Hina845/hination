@@ -32,6 +32,11 @@ from typing import Any
 
 import requests
 
+from ml.resilient import (
+    ResilientHTTPClient,
+    WEATHER_ENDPOINTS,
+    get_http_client,
+)
 from model.areas import FORECAST_AREAS
 
 
@@ -116,10 +121,20 @@ class OpenMeteoHistoricalProvider(HistoricalWeatherProvider):
     def __init__(self, cache_dir: Path | None = None, rate_limit_delay: float = 0.1):
         self.cache_dir = cache_dir
         self.rate_limit_delay = rate_limit_delay
-        self.session = requests.Session()
-        self.session.headers.update({"User-Agent": "HINATION/1.0"})
         if cache_dir:
             cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Resilient client: auto-fallback qua nhiều endpoints khi bị block
+        self._http = get_http_client(
+            name="era5_weather",
+            endpoints=WEATHER_ENDPOINTS,
+            cache_dir=cache_dir,
+        )
+    
+    @property
+    def session(self) -> requests.Session:
+        """Backward-compat session accessor."""
+        return self._http.session
     
     def _monthly_cache_path(
         self, lat: float, lon: float, year: int, month: int,
@@ -184,9 +199,11 @@ class OpenMeteoHistoricalProvider(HistoricalWeatherProvider):
             }
             
             time.sleep(self.rate_limit_delay)
-            resp = self.session.get(self.BASE_URL, params=params, timeout=120)
-            resp.raise_for_status()
-            data = resp.json()
+            data = self._http.request(
+                params=params,
+                allow_cache=True,
+                allow_stale_cache=True,
+            )
             
             # Response có thể là dict (1 location) hoặc list (multi-location)
             location_data_list = data if isinstance(data, list) else [data]
