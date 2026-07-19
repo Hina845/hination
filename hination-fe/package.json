@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:citizens": "node scripts/seed-citizens.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

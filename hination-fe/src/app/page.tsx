@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getSessionUser } from "@/lib/auth";
-
-export default async function Home() {
-  const user = await getSessionUser();
-  redirect(user ? "/app" : "/login");
+export default function Home() {
+  // The dashboard is open to everyone (residents joining via the shared link).
+  // Login is optional and only the village chief needs it for /manage.
+  redirect("/app");
 }

@@ -1,21 +1,11 @@
-import { redirect } from "next/navigation";
-
 import ForecastMapShell from "@/components/ForecastMapShell";
 import { readPredictLevelsForDate } from "@/lib/area-brief";
 import { getSessionUser } from "@/lib/auth";
 import { overallLevel } from "@/lib/danger-score";
+import { getForecast } from "@/lib/forecast";
+import { totalSmsSent } from "@/lib/sms-log";
+import { countVillagers, countVillagersByArea } from "@/lib/villagers";
 import type { DangerLevel, ForecastResponse } from "@/types/forecast";
-
-async function getForecast(): Promise<ForecastResponse | null> {
-  const baseUrl = process.env.HINATION_API_BASE_URL ?? "http://127.0.0.1:8000";
-  try {
-    const response = await fetch(`${baseUrl}/api/v1/forecasts/latest`, { cache: "no-store" });
-    if (!response.ok) return null;
-    return (await response.json()) as ForecastResponse;
-  } catch {
-    return null;
-  }
-}
 
 // Fold each area's warmed AI prediction into a combined "overall" level so the map
 // renders reduced-API + news scoring immediately. Areas without a warmed brief fall
@@ -45,7 +35,15 @@ function applyOverallLevels(forecast: ForecastResponse): ForecastResponse {
         const predictLevel = predict ?? 0;
         const overall = predict === undefined ? area.danger.level : overallLevel(area.danger.level, predict);
         maxOverall = Math.max(maxOverall, overall);
-        return { ...area, danger: { ...area.danger, overallLevel: overall, predictLevel } };
+        // Apply the same reduce+news blend to every hour so the timeline scrubber colors
+        // each hour consistently with the day-peak view (the AI predict signal is per-area,
+        // not per-hour, so the same offset applies across the day's 24 hours).
+        const hours = area.hours.map((hour) => ({
+          ...hour,
+          predictLevel,
+          overallLevel: predict === undefined ? hour.level : overallLevel(hour.level, predict),
+        }));
+        return { ...area, hours, danger: { ...area.danger, overallLevel: overall, predictLevel } };
       });
       return { ...day, areas, maximumAlertLevel: Math.max(1, maxOverall) as DangerLevel };
     }),
@@ -53,24 +51,38 @@ function applyOverallLevels(forecast: ForecastResponse): ForecastResponse {
 }
 
 export default async function AppPage() {
-  const user = await getSessionUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
+  // Open dashboard: no login required to view the forecast map. Only /manage
+  // (villager list) is gated, which is the village chief's optional login.
   const forecast = await getForecast();
   if (!forecast) {
     return (
       <main className="forecast-unavailable">
-        <span>DB–MWAI</span>
+        <span>Điện Biên Forecast</span>
         <h1>Chưa thể tải dữ liệu dự báo</h1>
         <p>Hệ thống vẫn giữ an toàn cho phiên đăng nhập. Vui lòng thử lại khi dịch vụ dự báo hoạt động.</p>
       </main>
     );
   }
 
+  // A logged-in chief additionally sees the citizen/SMS summary and the SMS send controls.
+  // Anonymous viewers get the map only. The Map (client boundary) can't hold a JS Map, so
+  // per-area counts cross as a plain object.
+  const user = await getSessionUser();
+  const chief = user
+    ? {
+        totalCitizens: countVillagers(user.id),
+        smsSent: totalSmsSent(user.id),
+        citizensByArea: Object.fromEntries(countVillagersByArea(user.id)),
+      }
+    : null;
+
   // Use `||` (not `??`) so an env var that is defined-but-empty — e.g. docker-compose's
   // `${HINATION_TILE_URL:-}` expanding to "" — still falls back to the OSM default.
-  return <ForecastMapShell forecast={applyOverallLevels(forecast)} tileUrl={process.env.HINATION_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"} />;
+  return (
+    <ForecastMapShell
+      forecast={applyOverallLevels(forecast)}
+      tileUrl={process.env.HINATION_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"}
+      chief={chief}
+    />
+  );
 }

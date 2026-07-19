@@ -7,5 +7,6 @@ export type Villager = {
   name: string;
   phone: string;
   address: string | null;
+  areaId: string | null; // forecast area id (see hination/model/areas.py); null = unassigned
   createdAt: number; // epoch ms
 };

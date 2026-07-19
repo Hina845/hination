@@ -1,11 +1,14 @@
 "use client";
 
-import { ArrowClockwise, ArrowSquareOut, Drop, Sparkle, Thermometer, Warning, Wind, X } from "@phosphor-icons/react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ArrowClockwise, ArrowSquareOut, CaretDown, Drop, PaperPlaneTilt, Sparkle, Thermometer, UsersThree, Warning, Wind, X } from "@phosphor-icons/react";
+import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { sendSms, type SmsFormState } from "@/app/manage/actions";
 import { fetchLiveWeather, weatherCodeLabel, type LiveWeather } from "@/lib/live-weather";
 import type { AreaBrief, AreaBriefInput } from "@/types/area-brief";
 import type { Coordinates, DailyWeather } from "@/types/forecast";
+
+const emptySmsState: SmsFormState = {};
 
 // Module-level cache so re-hovering the same area+day is instant and never re-hits
 // the API. The server already caches across accounts; this just avoids client churn.
@@ -22,6 +25,11 @@ type Props = {
   forecastLine: string;
   weather: DailyWeather;
   coordinates: Coordinates;
+  // Send controls appear only for a logged-in chief. `citizenCount` = villagers tagged to
+  // this area; `onSent` lets the map refresh its summary counter after a send.
+  canSend: boolean;
+  citizenCount: number;
+  onSent: () => void;
   onClose: () => void;
   onPointerEnter: () => void;
   onPointerLeave: () => void;
@@ -49,16 +57,34 @@ function formatUpdated(generatedAt: number) {
   return `${time} · ${hours} giờ trước`;
 }
 
-export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, forecastLine, weather, coordinates, onClose, onPointerEnter, onPointerLeave }: Props) {
+export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, forecastLine, weather, coordinates, canSend, citizenCount, onSent, onClose, onPointerEnter, onPointerLeave }: Props) {
   const cacheKey = cacheKeyFor(input.areaId, input.date);
   const [brief, setBrief] = useState<AreaBrief | null>(() => briefCache.get(cacheKey) ?? null);
   const [loading, setLoading] = useState(!briefCache.has(cacheKey));
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState<LiveWeather | null>(null);
+  // Sources start collapsed to keep the card short; the chief expands them on demand.
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const requestRef = useRef(0);
   const cardRef = useRef<HTMLElement>(null);
 
+  // Quick-send SMS to this area's villagers, pre-filled from the AI brief until the chief
+  // edits it. `smsDirty` guards their edits from being overwritten when the brief loads.
+  const [smsText, setSmsText] = useState("");
+  const smsDirty = useRef(false);
+  const [smsState, smsAction, smsPending] = useActionState(sendSms, emptySmsState);
+
   const isToday = input.date === localToday();
+
+  // Seed the SMS box from the brief (headline + summary) once it arrives, unless edited.
+  useEffect(() => {
+    if (brief && !smsDirty.current) setSmsText(`${brief.headline}\n${brief.summary}`);
+  }, [brief]);
+
+  // Refresh the map summary counter after a successful send.
+  useEffect(() => {
+    if (typeof smsState.sent === "number") onSent();
+  }, [smsState.sent, onSent]);
 
   // Pull the accurate live reading for the hovered point from Open-Meteo (free, no key).
   // Silently ignore failures — the card still renders the pre-computed forecast aggregate.
@@ -172,6 +198,11 @@ export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, f
           <li><Drop weight="fill" /> {rain} mm</li>
           <li><Wind weight="fill" /> {gust} km/h</li>
         </ul>
+        {canSend && (
+          <p className="area-brief__citizens">
+            <UsersThree weight="fill" /> {citizenCount} người dân trong khu vực
+          </p>
+        )}
       </div>
 
       <div className="area-brief__ai">
@@ -198,6 +229,38 @@ export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, f
         ) : null}
       </div>
 
+      {canSend && (
+        <div className="area-brief__send">
+          {typeof smsState.sent === "number" ? (
+            <p className="area-brief__send-ok"><PaperPlaneTilt weight="fill" /> Đã gửi tới {smsState.sent} người dân.</p>
+          ) : (
+            <form action={smsAction} className="area-brief__send-form">
+              <label htmlFor={`sms-${input.areaId}`} className="area-brief__send-label">
+                <PaperPlaneTilt weight="fill" /> Gửi SMS tới khu vực
+              </label>
+              <textarea
+                id={`sms-${input.areaId}`}
+                name="message"
+                rows={3}
+                required
+                value={smsText}
+                placeholder="Nội dung tin nhắn khẩn…"
+                onChange={(event) => {
+                  smsDirty.current = true;
+                  setSmsText(event.target.value);
+                }}
+              />
+              <input type="hidden" name="areaIds" value={JSON.stringify([input.areaId])} />
+              {smsState.error && <p className="area-brief__send-error" role="alert">{smsState.error}</p>}
+              <button type="submit" className="area-brief__send-btn" disabled={smsPending || citizenCount === 0}>
+                <PaperPlaneTilt weight="fill" />
+                {smsPending ? "Đang gửi…" : citizenCount === 0 ? "Chưa có người dân" : `Gửi tới ${citizenCount} người`}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
       {brief && (
         <div className="area-brief__meta">
           <span className="area-brief__updated">Cập nhật {formatUpdated(brief.generatedAt)}</span>
@@ -215,21 +278,32 @@ export default function AreaBriefCard({ input, anchor, levelColor, levelLabel, f
 
       {brief && brief.sources.length > 0 && (
         <div className="area-brief__sources">
-          <span className="area-brief__sources-label">Nguồn tin</span>
-          <ul>
-            {brief.sources.slice(0, 5).map((source) => (
-              <li key={source.url}>
-                <a href={source.url} target="_blank" rel="noopener noreferrer" className="area-brief__source">
-                  <ArrowSquareOut />
-                  <span className="area-brief__source-title">{source.title}</span>
-                  <span className="area-brief__source-meta">
-                    {source.publisher}
-                    {source.age ? ` · ${source.age}` : ""}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            className="area-brief__sources-toggle"
+            aria-expanded={sourcesOpen}
+            onClick={() => setSourcesOpen((open) => !open)}
+          >
+            <span className="area-brief__sources-label">Nguồn tin</span>
+            <span className="area-brief__sources-count">{brief.sources.slice(0, 5).length}</span>
+            <CaretDown weight="bold" className={`area-brief__sources-caret${sourcesOpen ? " area-brief__sources-caret--open" : ""}`} />
+          </button>
+          {sourcesOpen && (
+            <ul>
+              {brief.sources.slice(0, 5).map((source) => (
+                <li key={source.url}>
+                  <a href={source.url} target="_blank" rel="noopener noreferrer" className="area-brief__source">
+                    <ArrowSquareOut />
+                    <span className="area-brief__source-title">{source.title}</span>
+                    <span className="area-brief__source-meta">
+                      {source.publisher}
+                      {source.age ? ` · ${source.age}` : ""}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

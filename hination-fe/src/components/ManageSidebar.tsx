@@ -3,7 +3,7 @@
 import { NavigationArrow } from "@phosphor-icons/react";
 import Link from "next/link";
 
-type NavKey = "map" | "dashboard" | "manage" | "radio";
+type NavKey = "map" | "dashboard" | "manage" | "radio" | "rescue";
 
 type NavEntry = {
   key: NavKey;
@@ -13,9 +13,9 @@ type NavEntry = {
 
 const NAV_ENTRIES: NavEntry[] = [
   { key: "map", label: "Bản đồ", href: "/app" },
-  { key: "dashboard", label: "Bảng điều khiển" },
   { key: "manage", label: "Quản lý", href: "/manage" },
-  { key: "radio", label: "Đài phát thanh" },
+  { key: "radio", label: "Đài phát thanh", href: "/radio" },
+  { key: "rescue", label: "Cứu hộ", href: "/rescue" },
 ];
 
 export default function ManageSidebar({ active }: { active: NavKey }) {
@@ -23,7 +23,7 @@ export default function ManageSidebar({ active }: { active: NavKey }) {
     <aside className="hidden w-64 shrink-0 flex-col gap-9 border-r border-[rgb(15_23_42_/_8%)] bg-white px-6 py-8 text-base md:flex">
       <div className="flex items-center gap-2.5 px-2 text-xl font-bold text-[#0f172a]">
         <NavigationArrow weight="fill" className="size-6 text-[#0f172a]" />
-        <span>DB–MWAI</span>
+        <span>Điện Biên Forecast</span>
       </div>
 
       <nav aria-label="Điều hướng" className="flex flex-col gap-1.5">

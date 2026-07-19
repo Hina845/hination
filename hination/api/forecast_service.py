@@ -86,6 +86,89 @@ def _validate_area_hours(
     return weather_hours, danger_hours
 
 
+# Temporal-downscaling knob. The trained model predicts one value per *day* and stamps
+# it on all 24 hours (disaster_model_v2.py); on its own the hourly timeline would be flat.
+# We distribute that daily prediction across the day using the hourly weather profile —
+# the day's rainiest (or, for storm/wind, windiest) hour keeps the model's full daily
+# level, and the calmest hour drops to HOUR_FLOOR of it. This is honest downscaling: it
+# never invents danger above what the model predicted for the day, only shapes it in time.
+HOUR_FLOOR = 0.5
+
+
+def _weather_intensity(weather_hour: dict[str, Any], dominant: str) -> float:
+    """Hourly forcing that shapes the day's danger, picked by the day's dominant hazard.
+
+    Precipitation drives flood/landslide; wind gusts drive storm/wind; temperature stands
+    in for wildfire dryness. All are non-negative and only used relative to the day's own
+    peak, so absolute units don't matter.
+    """
+    if dominant in ("storm", "wind"):
+        return max(0.0, _number(weather_hour.get("wind_gusts_10m", 0) or 0, "wind gust"))
+    if dominant == "wildfire":
+        return max(0.0, _number(weather_hour.get("temperature_2m", 0) or 0, "temperature"))
+    return max(0.0, _number(weather_hour.get("precipitation", 0) or 0, "precipitation"))
+
+
+def _build_day_hours(
+    day_danger: list[dict[str, Any]], day_weather: list[dict[str, Any]], area_id: str
+) -> list[dict[str, Any]]:
+    """24 per-hour danger records for the timeline scrubber, downscaled from the day.
+
+    The model's per-hour level/risk are flat within a day, so we take the day's envelope
+    (its peak level and risk) and redistribute it in time by the hourly weather profile.
+    The peak-weather hour recovers the model's daily level exactly (so the day tab, which
+    reads the day peak, stays consistent); calmer hours scale down toward HOUR_FLOOR.
+    """
+    parsed: list[dict[str, Any]] = []
+    for danger_hour in day_danger:
+        risks = danger_hour.get("risks")
+        if not isinstance(risks, dict):
+            raise ForecastDataError("FORECAST_INCOMPATIBLE", f"Missing hourly risks for {area_id}")
+        dominant = str(danger_hour.get("dominant_disaster"))
+        if dominant not in DISASTER_TYPES:
+            raise ForecastDataError("FORECAST_INCOMPATIBLE", f"Unknown disaster type: {dominant}")
+        level = int(_number(danger_hour.get("alert_level"), "alert_level"))
+        if level not in range(1, 6):
+            raise ForecastDataError("FORECAST_INCOMPATIBLE", f"Invalid alert level: {level}")
+        parsed.append(
+            {
+                "danger": danger_hour,
+                "dominant": dominant,
+                "level": level,
+                "overall": _number(danger_hour.get("overall_risk"), "overall_risk"),
+                "risks": {key: round(_number(risks.get(key, 0), f"risk {key}"), 3) for key in ("flood", "landslide", "storm", "wildfire")},
+            }
+        )
+
+    # Day envelope = the model's daily prediction (its peak across the flat 24h block).
+    peak = max(parsed, key=lambda item: item["overall"])
+    day_level = max(item["level"] for item in parsed)
+    day_risk = peak["overall"]
+    day_dominant = peak["dominant"]
+    intensities = [_weather_intensity(weather_hour, day_dominant) for weather_hour in day_weather]
+    peak_intensity = max(intensities) if intensities else 0.0
+
+    hours: list[dict[str, Any]] = []
+    for i, item in enumerate(parsed):
+        # weight ∈ [HOUR_FLOOR, 1]; 1 at the day's peak-weather hour. A day with no forcing
+        # to distribute (dry/calm) stays flat at the model's daily level.
+        shape = (intensities[i] / peak_intensity) if peak_intensity > 1e-9 else 1.0
+        weight = HOUR_FLOOR + (1.0 - HOUR_FLOOR) * shape
+        hour_level = int((1.0 + (day_level - 1) * weight) + 0.5)
+        hours.append(
+            {
+                "time": str(item["danger"].get("datetime")),
+                "hourOfDay": i,
+                "level": max(1, min(day_level, hour_level)),
+                "overallRisk": round(day_risk * weight, 3),
+                "dominantDisaster": item["dominant"],
+                "risks": item["risks"],
+                "message": str(item["danger"].get("message_vi") or "Không có cảnh báo."),
+            }
+        )
+    return hours
+
+
 def combine_forecasts(weather: dict[str, Any], danger: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
     weather_areas = weather.get("districts")
     danger_areas = danger.get("districts")
@@ -151,6 +234,7 @@ def combine_forecasts(weather: dict[str, Any], danger: dict[str, Any], now: date
             coords = danger_area.get("coordinates") or weather_area.get("coordinates")
             if not isinstance(coords, dict):
                 raise ForecastDataError("FORECAST_INCOMPATIBLE", f"Missing coordinates for {area_id}")
+            hours = _build_day_hours(day_danger, day_weather, area_id)
             areas.append(
                 {
                     "id": area_id,
@@ -173,6 +257,7 @@ def combine_forecasts(weather: dict[str, Any], danger: dict[str, Any], now: date
                         "risks": {key: round(_number(risks.get(key, 0), f"risk {key}"), 3) for key in ("flood", "landslide", "storm", "wildfire")},
                         "message": str(peak.get("message_vi") or "Không có cảnh báo."),
                     },
+                    "hours": hours,
                 }
             )
         date = str(grouped[AREA_IDS[0]][2][day_index * 24]["datetime"])[:10]

@@ -22,6 +22,22 @@ export type DailyDanger = {
   overallLevel?: number;
   predictLevel?: number; // AI news-based prediction, 0–2 (0 when not yet warmed)
 };
+// One hour of the danger dimension for an area. The model is hourly under the hood
+// (168 points/area); this is a single point so the timeline can scrub to a specific
+// hour. Weather stays a daily summary on the area — only danger is hour-accurate.
+export type ForecastHour = {
+  time: string; // ISO datetime for this hour
+  hourOfDay: number; // 0–23 position within the selected day (drives the scrubber index)
+  level: DangerLevel; // raw API level (1–5)
+  overallRisk: number;
+  dominantDisaster: DisasterType;
+  risks: Record<"flood" | "landslide" | "storm" | "wildfire", number>;
+  message: string;
+  // Injected server-side (see app/app/page.tsx), mirroring DailyDanger.overallLevel so
+  // the map colors an individual hour with the same reduced-API + news blend as the day.
+  overallLevel?: number;
+  predictLevel?: number;
+};
 export type ForecastArea = {
   id: string;
   administrativeCode: string;
@@ -29,6 +45,7 @@ export type ForecastArea = {
   coordinates: Coordinates;
   weather: DailyWeather;
   danger: DailyDanger;
+  hours: ForecastHour[]; // 24 entries for this area on this day
 };
 export type ForecastDay = {
   dayOffset: number;

@@ -60,6 +60,66 @@ describe("forecast playback", () => {
   });
 });
 
+describe("week slider", () => {
+  function renderSlider(overrides: Record<string, unknown> = {}) {
+    const onSelectIndex = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <TimelineDock
+        days={days}
+        selected={0}
+        onSelect={onSelect}
+        slotsPerDay={6}
+        selectedIndex={1}
+        onSelectIndex={onSelectIndex}
+        selectedFraction={8 / 168}
+        selectedLabel="CN 18 - 08:00"
+        nowIndex={7}
+        nowFraction={31 / 168}
+        {...overrides}
+      />,
+    );
+    return { onSelectIndex, onSelect };
+  }
+
+  it("renders a draggable slider with the floating time tooltip", () => {
+    renderSlider();
+    const slider = screen.getByRole("slider", { name: "Chọn thời điểm dự báo" });
+    expect(slider).toHaveAttribute("aria-valuenow", "1");
+    expect(slider).toHaveAttribute("aria-valuemax", "41"); // 7 days × 6 slots − 1
+    expect(screen.getByText("CN 18 - 08:00")).toBeInTheDocument();
+  });
+
+  it("nudges by one 4-hour slot with arrow keys, clamped to the ends", () => {
+    const { onSelectIndex } = renderSlider({ selectedIndex: 5 });
+    const slider = screen.getByRole("slider", { name: "Chọn thời điểm dự báo" });
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    expect(onSelectIndex).toHaveBeenLastCalledWith(6);
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    expect(onSelectIndex).toHaveBeenLastCalledWith(4);
+    fireEvent.keyDown(slider, { key: "End" });
+    expect(onSelectIndex).toHaveBeenLastCalledWith(41);
+  });
+
+  it("jumps to now via the now marker", () => {
+    const { onSelectIndex } = renderSlider();
+    fireEvent.click(screen.getByRole("button", { name: "Về thời điểm hiện tại" }));
+    expect(onSelectIndex).toHaveBeenCalledWith(7);
+  });
+
+  it("selects a day from the day bar", () => {
+    const { onSelect } = renderSlider({ nowFraction: null, nowIndex: -1 });
+    fireEvent.click(screen.getByRole("button", { name: /20 tháng 07/ }));
+    expect(onSelect).toHaveBeenCalledWith(2);
+  });
+
+  it("falls back to plain day tabs when slider props are absent", () => {
+    render(<TimelineDock days={days} selected={0} onSelect={() => {}} />);
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(7);
+  });
+});
+
 describe("selected-forecast labels", () => {
   it("labels each day with the selected forecast's level instead of the global maximum", () => {
     const dayLevels = [1, 5, 3, 2, 4, 1, 2];

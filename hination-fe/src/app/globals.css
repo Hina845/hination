@@ -485,8 +485,24 @@ button {
   list-style: none;
 }
 
-.disaster-panel {
+/* Stacks the disaster-type and danger-level panels top-right, danger directly below
+   disaster. Scrolls internally if both together outgrow the viewport height. */
+.panel-stack {
+  position: absolute;
+  z-index: 500;
   top: 5rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  max-height: calc(100dvh - 6.5rem);
+  overflow-y: auto;
+}
+
+.panel-stack .panel {
+  position: static;
+  right: auto;
 }
 
 .radio-row {
@@ -542,10 +558,6 @@ button {
   color: var(--ink);
 }
 
-.danger-panel {
-  bottom: 1.5rem;
-}
-
 .danger-panel li {
   display: flex;
   align-items: center;
@@ -565,7 +577,7 @@ button {
 .alert-card {
   position: absolute;
   z-index: 520;
-  top: 6rem;
+  top: 12rem;
   left: 50%;
   width: min(21rem, calc(100vw - 2rem));
   transform: translateX(-50%);
@@ -680,10 +692,10 @@ button {
 .timeline-dock {
   position: absolute;
   z-index: 550;
-  bottom: 1rem;
+  bottom: calc(0.75rem - 16px);
   left: 1rem;
   display: flex;
-  width: min(46rem, calc(100vw - 2rem));
+  width: min(52rem, calc(100vw - 2rem));
   align-items: center;
   gap: 0.75rem;
 }
@@ -712,6 +724,33 @@ button {
 .play-button svg {
   width: 1.4rem;
   height: 1.4rem;
+}
+
+/* "Jump to now" button, sits to the left of the play button. */
+.now-button {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  place-items: center;
+  border: 1px solid var(--panel-border);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 94%);
+  color: #1f2937;
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(0.75rem);
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.now-button:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.now-button svg {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .timeline-panel {
@@ -845,6 +884,137 @@ button {
   background: var(--danger);
 }
 
+/* ---- Continuous week slider (Windy-style): draggable handle over a day bar ---- */
+.timeline-panel--slider {
+  padding: 1.6rem 0.9rem 0;
+}
+
+.timeline-track {
+  position: relative;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 12%);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.timeline-track:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: 4px;
+}
+
+.timeline-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: #1f2937;
+  pointer-events: none;
+}
+
+/* Vertical "now" tick on the track; click to jump the handle to the current time. */
+.timeline-now-mark {
+  position: absolute;
+  top: -0.28rem;
+  bottom: -0.28rem;
+  width: 0.14rem;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 9999px;
+  background: var(--danger);
+  cursor: pointer;
+}
+
+.timeline-handle {
+  position: absolute;
+  top: 50%;
+  width: 1.05rem;
+  height: 1.05rem;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: #fff;
+  border: 2px solid #1f2937;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 35%);
+  pointer-events: none;
+}
+
+/* Floating time pill above the handle (orange, arrow pointing down). */
+.timeline-bubble {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 0.22rem 0.6rem;
+  border-radius: 0.55rem;
+  background: #f59e0b;
+  color: #422006;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0.4rem 1rem rgb(15 23 42 / 22%);
+}
+
+.timeline-bubble::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 0.35rem solid transparent;
+  border-top-color: #f59e0b;
+  content: "";
+}
+
+.timeline-daybar {
+  display: flex;
+  min-width: 0;
+  margin-top: 0.4rem;
+}
+
+/* Each day is an equal segment under the track, aligned with the handle's day. */
+.timeline-dayseg {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid rgb(100 116 139 / 22%);
+  background: transparent;
+  padding: 0.3rem 0.3rem 0.55rem;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.timeline-dayseg:first-child { border-left: 0; }
+.timeline-dayseg:hover { color: #0f172a; }
+.timeline-dayseg--active { color: #0f172a; font-weight: 700; }
+.timeline-dayseg--danger { color: var(--danger); }
+.timeline-dayseg--danger.timeline-dayseg--active { color: #b91c1c; }
+.timeline-dayseg .day-danger-dot { bottom: 0.2rem; }
+
+.hour-readout {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 8%);
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-readout--danger {
+  background: var(--danger);
+  color: #fff;
+}
+
 /* ---- Marker tooltip ---- */
 .danger-pulse {
   transform-box: fill-box;
@@ -857,17 +1027,106 @@ button {
   50% { opacity: 0.25; transform: scale(1.08); }
 }
 
+/* ---- Hover preview tip ---- */
+.area-tip {
+  position: absolute;
+  z-index: 545;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(15rem, calc(100vw - 1rem));
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 97%);
+  box-shadow: 0 0.75rem 2.25rem rgb(15 23 42 / 20%);
+  backdrop-filter: blur(0.5rem);
+  pointer-events: none;
+}
+
+.area-tip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.area-tip__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.area-tip__chip {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.area-tip__line {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.area-tip__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.area-tip__stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.area-tip__stats svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--ink-muted);
+}
+
+.area-tip__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.1rem 0 0;
+  color: #4f46e5;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.area-tip__hint svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 /* ---- AI news brief card (hover) ---- */
 .area-brief {
   position: absolute;
   z-index: 540;
-  top: 6rem;
+  top: 12rem;
   left: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  width: min(22rem, calc(100vw - 2rem));
-  max-height: calc(100vh - 8.5rem);
+  width: min(27rem, calc(100vw - 2rem));
+  /* Leave room for the top offset and the timeline dock so the card never overflows
+     the viewport; its content scrolls inside instead. */
+  max-height: calc(100vh - 13rem);
   overflow-y: auto;
   padding: 1rem 1.1rem 1.05rem;
   border: 1px solid var(--panel-border);
@@ -1111,9 +1370,19 @@ button {
   padding-top: 0.6rem;
 }
 
+.area-brief__sources-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
 .area-brief__sources-label {
-  display: block;
-  margin-bottom: 0.35rem;
   color: var(--ink-muted);
   font-size: 0.7rem;
   font-weight: 700;
@@ -1121,10 +1390,34 @@ button {
   text-transform: uppercase;
 }
 
+.area-brief__sources-count {
+  display: grid;
+  place-items: center;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.3rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 8%);
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.area-brief__sources-caret {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-left: auto;
+  transition: transform 160ms ease;
+}
+
+.area-brief__sources-caret--open {
+  transform: rotate(180deg);
+}
+
 .area-brief__sources ul {
   display: grid;
   gap: 0.35rem;
-  margin: 0;
+  margin: 0.5rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -1197,27 +1490,587 @@ button:focus-visible,
   outline-offset: 2px;
 }
 
+/* ---- Chief summary window (below the nav menu) ---- */
+.map-summary {
+  position: absolute;
+  z-index: 500;
+  top: 5.5rem;
+  left: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  min-width: 11.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 1rem;
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(0.75rem);
+  transition: top 200ms ease;
+}
+
+/* When the nav dropdown is open it grows downward over the chief summary — drop the
+   summary below the expanded menu so every nav item stays visible. Desktop only; on
+   phones the summary lives at the bottom of the screen (see the 520px query). */
+@media (min-width: 521px) {
+  .nav-menu--open ~ .map-summary {
+    top: 12rem;
+  }
+}
+
+.map-summary__stat {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.15rem 0.4rem;
+  flex: 1;
+}
+
+.map-summary__stat svg {
+  grid-row: span 2;
+  width: 1.4rem;
+  height: 1.4rem;
+  color: #4f46e5;
+}
+
+.map-summary__value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.map-summary__label {
+  grid-column: 2;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* ---- Dangerous-areas blast dropdown (reuses .notif-dropdown chrome) ---- */
+.blast-dropdown {
+  right: 1rem;
+}
+
+.blast-dropdown__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 1rem;
+}
+
+.blast-dropdown__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.blast-dropdown__field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.blast-dropdown__count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.blast-dropdown__count strong {
+  color: var(--ink);
+}
+
+.blast-dropdown__form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.blast-dropdown__regen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #4f46e5;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.blast-dropdown__regen svg { width: 0.9rem; height: 0.9rem; }
+
+.blast-dropdown__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+.blast-dropdown__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.6rem;
+  border: 0;
+  border-radius: 0.7rem;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.blast-dropdown__send:hover:not(:disabled) { background: #4338ca; }
+.blast-dropdown__send:disabled { cursor: not-allowed; opacity: 0.6; }
+.blast-dropdown__send svg { width: 1.05rem; height: 1.05rem; }
+
+.blast-dropdown__success {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 1.1rem 1rem 1.25rem;
+  color: #15803d;
+  font-weight: 600;
+}
+
+/* ---- Dual-thumb range slider ---- */
+.range-slider {
+  position: relative;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.range-slider__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.35rem;
+  border-radius: 9999px;
+  background: #e2e8f0;
+}
+
+.range-slider__fill {
+  position: absolute;
+  height: 0.35rem;
+  border-radius: 9999px;
+  background: #4f46e5;
+}
+
+.range-slider__input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.range-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #4f46e5;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 25%);
+  cursor: pointer;
+}
+
+.range-slider__input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #4f46e5;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 25%);
+  cursor: pointer;
+}
+
+.range-slider__input::-moz-range-track { background: transparent; }
+
+/* ---- Hover-card citizen line + quick-send block ---- */
+.area-brief__citizens {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.area-brief__citizens svg { width: 1rem; height: 1rem; color: #4f46e5; }
+
+.area-brief__send {
+  border-top: 1px solid var(--panel-border);
+  padding-top: 0.7rem;
+}
+
+.area-brief__send-form { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.area-brief__send-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.area-brief__send-label svg { width: 0.95rem; height: 0.95rem; }
+
+.area-brief__send-form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.83rem;
+  color: var(--ink);
+}
+
+.area-brief__send-error { margin: 0; color: var(--danger); font-size: 0.78rem; }
+
+.area-brief__send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 0.7rem;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.area-brief__send-btn:hover:not(:disabled) { background: #4338ca; }
+.area-brief__send-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+.area-brief__send-btn svg { width: 1rem; height: 1rem; }
+
+.area-brief__send-ok {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #15803d;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 860px) {
   .alert-card { top: auto; bottom: 6.5rem; }
-  .disaster-panel { top: 4.75rem; }
-  .danger-panel { bottom: 6.5rem; }
+  .panel-stack { top: 4.75rem; }
+}
+
+/* ---- Emergency help: FAB, citizen SOS screen, live help-request dots ---- */
+
+/* Bottom-right toggle between the map and the citizen SOS screen. Sits above the SOS
+   overlay so it stays reachable from either view. */
+.help-fab {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0.6rem 1.6rem rgb(239 68 68 / 42%);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.help-fab:hover { transform: translateY(-1px); box-shadow: 0 0.8rem 2rem rgb(239 68 68 / 52%); }
+.help-fab svg { width: 1.4rem; height: 1.4rem; }
+
+/* Full-screen SOS layer — covers the map (and its controls) but not the FAB. */
+.emergency-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 560;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(160deg, #fff5f5, #eef2f6);
+  overflow-y: auto;
+}
+
+.emergency-screen {
+  width: min(30rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem 1.75rem;
+  border-radius: 1.5rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+}
+
+.emergency-icon { width: 3.5rem; height: 3.5rem; color: var(--danger); }
+.emergency-icon--ok { color: #16a34a; }
+.emergency-screen h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+.emergency-lead { margin: 0; color: var(--ink-soft); line-height: 1.5; }
+
+.emergency-field { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; text-align: left; }
+.emergency-field span { font-size: 0.9rem; color: var(--ink-soft); font-weight: 600; }
+.emergency-field textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--panel-border);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.emergency-action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 1.05rem 1.25rem;
+  border: none;
+  border-radius: 1rem;
+  background: var(--danger);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0.6rem 1.6rem rgb(239 68 68 / 40%);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.emergency-action:hover:not(:disabled) { transform: translateY(-1px); }
+.emergency-action:disabled { opacity: 0.7; cursor: progress; }
+.emergency-action svg { width: 1.5rem; height: 1.5rem; }
+
+.emergency-secondary {
+  padding: 0.7rem 1.2rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emergency-hint {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+.emergency-hint svg { width: 1rem; height: 1rem; }
+
+.emergency-error {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+.emergency-error svg { width: 1.1rem; height: 1.1rem; }
+
+/* Nearest-first emergency call picker on the citizen SOS screen: a primary "call nearest"
+   button plus an expandable list of the other numbers. */
+.emergency-contacts { width: 100%; display: flex; flex-direction: column; gap: 0.6rem; text-align: left; }
+.emergency-contacts-title { font-size: 0.9rem; font-weight: 700; color: var(--ink-soft); }
+.emergency-picker { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.emergency-call {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--panel-border);
+  background: #fff;
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.emergency-call svg { width: 1.3rem; height: 1.3rem; color: #16a34a; flex-shrink: 0; }
+.emergency-call-body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.emergency-call-name { font-weight: 700; }
+.emergency-call-meta { font-size: 0.82rem; color: var(--ink-muted); }
+
+/* Primary "call nearest" button. */
+.emergency-call--primary {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 0.5rem 1.4rem rgb(22 163 74 / 32%);
+}
+.emergency-call--primary svg { color: #fff; width: 1.5rem; height: 1.5rem; }
+.emergency-call--primary .emergency-call-meta { color: rgb(255 255 255 / 85%); }
+.emergency-call--primary:hover { border-color: #15803d; transform: translateY(-1px); }
+
+.emergency-others { display: flex; flex-direction: column; gap: 0.4rem; }
+.emergency-others-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--panel-border);
+  background: #fff;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.emergency-others-toggle svg { width: 1rem; height: 1rem; }
+.emergency-others-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.85rem;
+  background: #fff;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.emergency-others-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.emergency-others-item:hover { background: #f1f5f9; }
+.emergency-others-item[aria-current="true"] { background: #ecfdf5; }
+
+/* "Bây giờ" chip in the timeline hour row — jumps the scrubber to now (where SOS dots show). */
+.hour-now {
+  display: inline-block;
+  margin-top: 0.5rem;
+  margin-left: 0.4rem;
+  padding: 0.12rem 0.6rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 9999px;
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.hour-now--active { background: var(--danger); color: #fff; border-color: transparent; }
+
+/* Live citizen SOS dots on the map. Diameter comes from --dot-size (scales with cluster
+   size); the ring pulses out with an ease-in-out scale + fade. */
+.help-dot-icon { background: transparent; border: 0; }
+.help-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--dot-size);
+  height: var(--dot-size);
+}
+.help-dot__core {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgb(239 68 68 / 50%);
+  box-shadow: 0 0.2rem 0.6rem rgb(239 68 68 / 35%);
+  color: #fff;
+  /* Number scales with the dot so a big hotspot shows a big, readable count. */
+  font-size: calc(var(--dot-size) * 0.34);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.help-dot__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgb(239 68 68 / 45%);
+  animation: help-dot-pulse 1.8s ease-in-out infinite;
+}
+.help-dot__count { line-height: 1; }
+
+@keyframes help-dot-pulse {
+  0% { transform: scale(0.7); opacity: 0.7; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
 
 @media (max-width: 520px) {
   .nav-menu { min-width: 9.5rem; padding: 0.8rem 0.9rem; }
   .map-toolbar { flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
-  .data-status { gap: 0.5rem; padding-left: 0.6rem; }
-  .data-status__label { display: none; }
+  /* Mobile toolbar: drop the "last updated" label + time and the "Chú giải" text, leaving
+     just the reload icon and the legend icon buttons. */
+  .data-status { gap: 0; padding: 0; border: 0; background: none; box-shadow: none; backdrop-filter: none; height: auto; }
+  .data-status__text { display: none; }
   .data-status__refresh-text { display: none; }
-  .data-status__refresh { padding: 0 0.55rem; }
+  .data-status__refresh { padding: 0 0.6rem; }
+  .legends-toggle { display: none; }
   .panel { min-width: 9.5rem; padding: 0.8rem 0.9rem; }
-  .timeline-dock { bottom: 0.5rem; left: 0.5rem; width: calc(100vw - 1rem); gap: 0.5rem; }
+  .timeline-dock { bottom: 1rem; left: 0.5rem; width: calc(100vw - 1rem); gap: 0.5rem; }
   .play-button { width: 3.25rem; height: 3.25rem; flex-basis: 3.25rem; }
+  .now-button { width: 2.75rem; height: 2.75rem; flex-basis: 2.75rem; }
   .area-brief { top: 4.75rem; left: 0.5rem; right: 0.5rem; width: auto; max-height: 60vh; }
   .notif-dropdown { top: 4.75rem; left: 0.5rem; right: 0.5rem; width: auto; max-height: 60vh; }
+  .map-summary { top: auto; bottom: 6.5rem; left: 0.5rem; min-width: 9.5rem; }
+  /* Lift the FAB above the full-width timeline dock so it never overlaps the scrubber. */
+  .help-fab { right: 0.75rem; bottom: 5.5rem; padding: 0.75rem 1.05rem; }
+  .emergency-overlay { padding: 1rem; }
+  .emergency-screen { padding: 1.75rem 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .danger-pulse { animation: none; }
+  .help-dot__ring { animation: none; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }

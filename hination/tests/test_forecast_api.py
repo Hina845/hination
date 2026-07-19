@@ -28,7 +28,9 @@ def make_forecasts(*, run_id: str | None = "run-1", generated_at: datetime | Non
                 {
                     "datetime": timestamp,
                     "temperature_2m": 15 + day_hour,
-                    "precipitation": 1,
+                    # Rain rises through the day so the hour downscaler has a profile to
+                    # follow (the wettest hour, day_hour=23, becomes the day's peak).
+                    "precipitation": day_hour,
                     "wind_gusts_10m": 10 + day_hour,
                     "humidity": 60 + area_index,
                     "cloud_cover": 50,
@@ -83,7 +85,7 @@ def test_aggregates_seven_days_and_all_areas_with_daily_peak():
     assert first["weather"] == {
         "temperatureMinC": 15.0,
         "temperatureMaxC": 38.0,
-        "rainfallTotalMm": 24.0,
+        "rainfallTotalMm": 276.0,
         "windGustMaxKmh": 33.0,
         "humidityAveragePct": 60.0,
         "cloudCoverAveragePct": 50.0,
@@ -91,6 +93,22 @@ def test_aggregates_seven_days_and_all_areas_with_daily_peak():
     assert first["danger"]["peakTime"].endswith("23:00+07:00")
     assert first["danger"]["overallRisk"] == pytest.approx(0.575)
     assert first["danger"]["dominantDisaster"] == "flood"
+
+    # 24 per-hour points for the timeline scrubber, downscaled from the daily prediction
+    # by the hourly rain profile.
+    hours = first["hours"]
+    assert len(hours) == 24
+    assert [hour["hourOfDay"] for hour in hours] == list(range(24))
+    # The wettest hour (h23) recovers the model's full daily level/risk — so the day tab
+    # (which reads the day peak) stays consistent — and matches the daily peak time.
+    assert hours[23]["overallRisk"] == pytest.approx(0.575)
+    assert hours[23]["level"] == 3
+    assert hours[23]["dominantDisaster"] == "flood"
+    assert hours[23]["time"] == first["danger"]["peakTime"]
+    # The driest hour (h0) is scaled down to the floor (0.5×), and its level drops below the
+    # day peak — this is the hourly variation the scrubber now shows.
+    assert hours[0]["overallRisk"] == pytest.approx(0.287)  # 0.575 × 0.5 floor, rounded
+    assert hours[0]["level"] < hours[23]["level"]
 
 
 def test_legacy_files_without_run_ids_are_supported():
