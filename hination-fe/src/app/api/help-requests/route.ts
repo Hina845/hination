@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000; // dots show requests from the last 24h
 const REASON_MAX = 300;
+const PLACE_MAX = 200;
 const THROTTLE_MS = 10_000; // best-effort per-IP spam guard (1 request / 10s)
 
 // Best-effort in-memory throttle. Resets on redeploy and is per-instance only — not real
@@ -24,7 +25,7 @@ function clientIp(request: Request): string {
   return request.headers.get("x-real-ip")?.trim() ?? "";
 }
 
-type RequestBody = { lat?: unknown; lng?: unknown; reason?: unknown };
+type RequestBody = { lat?: unknown; lng?: unknown; reason?: unknown; place?: unknown };
 
 export async function POST(request: Request) {
   logStep("api/help-requests", "POST received");
@@ -47,6 +48,9 @@ export async function POST(request: Request) {
   const reasonRaw = typeof body?.reason === "string" ? body.reason.trim() : "";
   const reason = reasonRaw ? reasonRaw.slice(0, REASON_MAX) : null;
 
+  const placeRaw = typeof body?.place === "string" ? body.place.trim() : "";
+  const place = placeRaw ? placeRaw.slice(0, PLACE_MAX) : null;
+
   // Precise browser coordinates win. Otherwise fall back to IP geolocation, then the
   // province centroid — a request is never dropped for lack of a fix.
   let lat: number | undefined;
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    createHelpRequest({ lat, lng, reason, source });
+    createHelpRequest({ lat, lng, reason, place, source });
     if (ip) lastSubmitByIp.set(ip, now);
     logStep("api/help-requests", "stored → 200", { source });
     return NextResponse.json({ ok: true });

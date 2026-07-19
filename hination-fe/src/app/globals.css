@@ -137,6 +137,27 @@ button {
   font-weight: 700;
 }
 
+/* Login CTA — a filled accent row so it stands apart from the plain nav links. */
+.nav-item--login {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 650;
+}
+
+.nav-item--login:hover {
+  background: #1e293b;
+  color: #fff;
+}
+
+.nav-item--login svg {
+  width: 1rem;
+  height: 1rem;
+}
+
 /* ---- Top-right toolbar ---- */
 .map-toolbar {
   position: absolute;
@@ -577,7 +598,7 @@ button {
 .alert-card {
   position: absolute;
   z-index: 520;
-  top: 12rem;
+  top: 5rem;
   left: 50%;
   width: min(21rem, calc(100vw - 2rem));
   transform: translateX(-50%);
@@ -692,7 +713,7 @@ button {
 .timeline-dock {
   position: absolute;
   z-index: 550;
-  bottom: calc(0.75rem - 16px);
+  bottom: calc(0.75rem);
   left: 1rem;
   display: flex;
   width: min(52rem, calc(100vw - 2rem));
@@ -1118,8 +1139,10 @@ button {
 .area-brief {
   position: absolute;
   z-index: 540;
-  top: 12rem;
-  left: 1rem;
+  top: 5rem;
+  /* Pinned to the empty right-hand map area, offset left of the legend panels
+     (right: 1rem, ~13rem wide) so the card never covers the province or the legends. */
+  right: 13rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -1844,9 +1867,9 @@ button:focus-visible,
 
 .emergency-field { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; text-align: left; }
 .emergency-field span { font-size: 0.9rem; color: var(--ink-soft); font-weight: 600; }
-.emergency-field textarea {
+.emergency-field textarea,
+.emergency-field input {
   width: 100%;
-  resize: vertical;
   padding: 0.7rem 0.85rem;
   border-radius: 0.85rem;
   border: 1px solid var(--panel-border);
@@ -1854,6 +1877,7 @@ button:focus-visible,
   color: var(--ink);
   font: inherit;
 }
+.emergency-field textarea { resize: vertical; }
 
 .emergency-action {
   width: 100%;
@@ -2073,4 +2097,61 @@ button:focus-visible,
   .danger-pulse { animation: none; }
   .help-dot__ring { animation: none; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+/* ── Onboarding tour (driver.js) ──────────────────────────────────────────────
+   Theme the guided-tour popover to match the app's frosted panels. driver.js's
+   own stylesheet already places the overlay/popover well above every app layer
+   (its z-index dwarfs our 1100 modal ceiling), so we only restyle appearance. */
+.driver-popover.hination-tour {
+  background: var(--panel-bg);
+  backdrop-filter: blur(0.75rem);
+  border: 1px solid var(--panel-border);
+  border-radius: 1rem;
+  box-shadow: var(--panel-shadow);
+  color: var(--ink);
+  max-width: 22rem;
+  padding: 1.25rem 1.35rem;
+}
+.driver-popover.hination-tour .driver-popover-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.driver-popover.hination-tour .driver-popover-description {
+  margin-top: 0.4rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.driver-popover.hination-tour .driver-popover-progress-text {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+.driver-popover.hination-tour .driver-popover-arrow {
+  border-color: var(--panel-bg);
+}
+.driver-popover.hination-tour .driver-popover-footer button {
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.85rem;
+  font-weight: 600;
+  text-shadow: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.driver-popover.hination-tour .driver-popover-prev-btn {
+  background: #f1f5f9;
+  color: var(--ink-soft);
+  border: 1px solid var(--panel-border);
+}
+.driver-popover.hination-tour .driver-popover-prev-btn:hover {
+  background: #e2e8f0;
+}
+.driver-popover.hination-tour .driver-popover-next-btn {
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid #4f46e5;
+}
+.driver-popover.hination-tour .driver-popover-next-btn:hover {
+  background: #4338ca;
+  border-color: #4338ca;
 }

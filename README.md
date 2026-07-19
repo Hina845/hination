@@ -280,6 +280,31 @@ Roadmap:
 
 AI-generated translations must be reviewed before operational use, especially for high-risk warnings.
 
+### 4.6 Radio Studio — one screen from warning to broadcast
+
+The **Radio Studio** (`/radio`, village-chief only) turns an active warning into an actual broadcast without leaving the dashboard.
+
+- **Auto-drafted alert.** The studio reads today's forecast and pre-fills a red alert card and AI risk-summary bullets for the most dangerous communes — dominant disaster, rainfall, peak-hour window and the affected-area band.
+- **Message composer.** A 280-character plain-language editor, pre-scoped to the at-risk areas.
+- **Area targeting.** Send to selected forecast areas or to every registered villager; the recipient count is computed live from the citizen registry.
+- **Multi-channel fan-out.** Loudspeaker, SMS and Zalo. The SMS channel uses the real (stubbed) SMS transport and writes an `sms_logs` row so the map and manage counters stay in sync; loudspeaker and Zalo are simulated at this stage.
+- **Voice selection.** Read the alert with an AI text-to-speech voice in **Kinh (Vietnamese)** or **Mông/Hmong**, or with one of the chief's **own recorded clips**. Recordings are captured in-browser via the `MediaRecorder` API, stored in SQLite (8 MB cap), and managed in a rename/delete library with a live `WaveBars` visualiser.
+- **Repeat & schedule.** Play the alert 1–5 times with a configurable gap; send now or schedule for later.
+- **Drafts & history.** Save a draft for review, or keep a log of everything already broadcast.
+
+### 4.7 Rescue & SOS loop
+
+A two-way citizen ↔ rescuer loop that works even for people who are not in any registry.
+
+- **Citizen SOS screen** (`EmergencyHelp`). One large button captures the caller's location — browser GPS first, server-side IP geolocation as a fallback — plus an optional free-text situation, and posts an **anonymous** help request. On phones this screen replaces the map; on desktop it is reachable from a floating action button.
+- **Nearest-first rescue numbers.** The SOS screen lists local emergency contacts sorted by distance to the caller, always backed by the national hotlines (**112 / 115 / 114 / 113**) so the picker is never empty, with tap-to-call.
+- **Open contact directory.** Anyone can add a rescue number; a logged-in chief's number is permanent, an anonymous visitor's number auto-expires after **48 hours**.
+- **Rescue console** (`/rescue`). Lists help requests from the last 24 hours with the resolved commune name, a **GPS-accurate vs IP-approximate** badge, the reported reason, time-ago and a one-tap Google Maps link. A second tab manages the emergency-number directory. Open help requests also render as live dots on the forecast map (`HelpRequestLayer`).
+
+### 4.8 Seeded citizen registry
+
+`pnpm seed:citizens` populates the chief's contact table with **~10,000 synthetic villager contacts spread across all 45 communes/wards of Điện Biên** in proportion to each unit's real population (urban wards and the Mường Thanh valley dense, remote northern communes sparse). The seed is fixed-PRNG reproducible and idempotent, so the map summary, per-area hover cards, blast dropdown and area-scoped SMS all show and send meaningful numbers on a fresh database — including in production, where `data/` is not committed.
+
 ---
 
 ## 5. How Điện Biên Forecast works
@@ -600,14 +625,18 @@ Track acknowledgement and support requests
 | Configurable warning thresholds | Implemented |
 | Interactive risk map | Implemented |
 | Plain-language Vietnamese bulletin | Implemented |
-| Villager or household registry | Demo implementation |
+| Villager or household registry | Implemented (≈10k seeded contacts across 45 communes) |
+| Radio Studio broadcast composer | Implemented |
+| Voice recording + Kinh/Hmong TTS voices | Implemented |
+| Citizen SOS + rescue console | Implemented (live help-request loop) |
+| Emergency-number directory | Implemented |
 | SMS interface | Simulated or adapter-ready |
 | Live SMS gateway | Roadmap unless a provider is configured |
-| Zalo Official Account integration | Roadmap |
-| Loudspeaker or TTS integration | Roadmap |
-| Thái and Mông/Hmong conversion | Roadmap |
+| Zalo Official Account integration | Roadmap (adapter simulated) |
+| Loudspeaker or TTS delivery | Composition implemented; physical delivery simulated |
+| Thái-language conversion | Roadmap |
 | Household acknowledgement loop | MVP target or simulated flow |
-| Live field-response tracking | Roadmap or simulated flow |
+| Live field-response tracking | SOS requests live; broader tracking on roadmap |
 | Direct local station feed | Roadmap |
 
 Update this table according to the features that are actually working in the repository.
@@ -722,17 +751,38 @@ Avoid presenting model accuracy as a production guarantee.
 
 ## 15. Tech stack
 
+### 15.1 Backend — forecast API and risk pipeline (`hination/`)
+
 | Layer | Technology | Role |
 |---|---|---|
-| **Forecast API** | Python · FastAPI · Uvicorn | Serves forecast, risk and warning data. |
-| **Risk model** | PyTorch model plus deterministic rules | Produces auditable risk scores and warning candidates. |
-| **Data ingestion** | Python HTTP client with cache and fallback | Fetches weather, historical and terrain data. |
-| **Scheduler** | Python scheduler | Refreshes forecasts and recomputes risk. |
-| **Frontend** | Next.js · React · TypeScript · Leaflet · Tailwind CSS | Displays map, warning status and response dashboard. |
-| **AI communication** | OpenAI-compatible LLM | Generates controlled plain-language bulletin formats. |
-| **Storage** | SQLite for demo | Stores registry, warnings, acknowledgements and audit data. |
-| **Delivery** | SMS, Zalo and loudspeaker adapters | Sends or simulates multi-channel warnings. |
-| **Deployment** | Docker Compose · Nginx | Runs frontend, backend and optional scheduler. |
+| **Forecast API** | Python 3.10+ · FastAPI ≥ 0.100 · Uvicorn · Pydantic 2 | Serves forecast, risk and warning data; downscales the per-day model output to per-hour danger for the timeline scrubber. |
+| **Risk model** | PyTorch ≥ 2.2 multi-task NN (`models/disaster_nn.pt`) · NumPy | Auditable per-commune risk scores. The `StandardScaler` mean/scale are baked into the checkpoint, so inference needs only torch + numpy. |
+| **Pre-trained hazards** | NOAA GloFAS v4 (via Open-Meteo Flood API) · NASA LHASA nowcast | Flood discharge scored against per-commune 30-year climatology; landslide probability queried live. `level = max(model, flood, landslide)`. |
+| **Data ingestion** | `requests` HTTP client with cache and graceful fallback · Google Earth Engine (`earthengine-api`) | Fetches Open-Meteo forecasts, ERA5/GFS reanalysis context and terrain features. |
+| **Scheduler** | `schedule` | Hourly forecast refresh and risk recompute (`run_hourly_scheduler.sh`). |
+| **Training (offline)** | scikit-learn ≥ 1.4 · pandas ≥ 2.0 | `StandardScaler`, metrics and feature frames — needed only on the box that (re)trains, not to serve predictions. |
+
+### 15.2 Frontend — dashboard, Radio Studio and Rescue console (`hination-fe/`)
+
+| Layer | Technology | Role |
+|---|---|---|
+| **Framework** | Next.js 16 (App Router · React Server Components · Server Actions) · React 19 · TypeScript 5.9 | Server-rendered dashboard; mutations run as server actions, no separate API layer for the app's own writes. |
+| **Styling** | Tailwind CSS 4 (`@tailwindcss/postcss`) | Utility-first styling across map, studio and console. |
+| **Map** | Leaflet 1.9 · react-leaflet 5 | Interactive risk map, per-area hover cards, timeline scrubber and live help-request dots. |
+| **Icons** | `@phosphor-icons/react` 2 | Consistent icon set. |
+| **Storage** | better-sqlite3 12 (Node.js runtime) · bcryptjs | Villager registry, broadcasts, voice recordings, emergency contacts, help requests and SMS log; hashed chief login. |
+| **Audio** | Browser `MediaRecorder` API → SQLite blob · `WaveBars` visualiser · Kinh/Hmong TTS clips | In-browser voice capture and playback for the Radio Studio. |
+| **Geolocation** | Browser Geolocation API · server-side IP geolocation fallback | Locates SOS callers and sorts rescue numbers nearest-first. |
+| **Testing** | Vitest 4 · Testing Library · jsdom | Component and unit tests. |
+| **Tooling** | pnpm 11 · ESLint 9 (`eslint-config-next`) | Package management and linting. |
+
+### 15.3 AI communication & delivery
+
+| Layer | Technology | Role |
+|---|---|---|
+| **AI communication** | OpenAI-compatible LLM | Generates controlled plain-language bulletin formats and the studio's risk-summary bullets. |
+| **Delivery** | SMS (real stub + log) · Zalo and loudspeaker adapters (simulated) | Multi-channel fan-out from the Radio Studio. |
+| **Deployment** | Docker Compose · Nginx | Runs frontend, backend and the optional scheduler behind a reverse proxy. |
 
 ---
 
@@ -878,10 +928,23 @@ API documentation: `http://localhost:8000/docs`
 ```bash
 cd hination-fe
 pnpm install
+
+# Seed ~10k synthetic villager contacts across the 45 communes (idempotent).
+# Required on a fresh DB so the map summary, hover cards, blast dropdown and
+# area-scoped SMS have data to show — including in production, where data/ is gitignored.
+pnpm seed:citizens
+
 pnpm dev
 ```
 
 Frontend development URL: `http://localhost:3000`
+
+Key frontend routes:
+
+- `/app` — public forecast map (mobile shows the citizen SOS screen).
+- `/manage` — village-chief villager registry and SMS (login required).
+- `/radio` — Radio Studio broadcast composer (login required).
+- `/rescue` — rescue console and emergency-number directory (open to all).
 
 For complete engineering details, see:
 

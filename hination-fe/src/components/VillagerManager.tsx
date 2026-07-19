@@ -118,7 +118,7 @@ export default function VillagerManager({
             Thêm số điện thoại và địa chỉ của người dân trong xã để gửi tin nhắn khẩn cấp nhanh chóng khi có thiên tai.
           </p>
         </div>
-        <div className="flex shrink-0 gap-3">
+        <div className="flex shrink-0 gap-3" data-tour="manage-add">
           <button
             type="button"
             onClick={() => setShowAdd(true)}
@@ -136,7 +136,7 @@ export default function VillagerManager({
         </div>
       </header>
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-tour="manage-search">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative w-full max-w-md">
             <MagnifyingGlass
@@ -180,7 +180,7 @@ export default function VillagerManager({
         </div>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border border-[rgb(15_23_42_/_8%)] bg-white shadow-[0_0.75rem_2.25rem_rgb(15_23_42_/_6%)]">
+      <div className="mt-5 overflow-hidden rounded-2xl border border-[rgb(15_23_42_/_8%)] bg-white shadow-[0_0.75rem_2.25rem_rgb(15_23_42_/_6%)]" data-tour="manage-table">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse text-left text-base">
             <thead>

@@ -28,6 +28,7 @@ export default async function RescuePage() {
       lat: request.lat,
       lng: request.lng,
       reason: request.reason,
+      place: request.place,
       source: request.source,
       createdAt: request.createdAt,
       locationName: nearestArea({ lat: request.lat, lng: request.lng }, areas)?.name ?? null,

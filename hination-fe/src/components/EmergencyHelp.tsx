@@ -1,10 +1,15 @@
 "use client";
 
 import { ArrowClockwise, CaretDown, CheckCircle, Lifebuoy, MapPin, Phone, Warning } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { haversineKm } from "@/lib/geo";
+import { haversineKm, nearestArea } from "@/lib/geo";
 import type { EmergencyContact } from "@/types/emergency-contact";
+import type { Coordinates } from "@/types/forecast";
+
+// Commune centroids passed down from the map, used to reverse-geocode the caller's GPS to a
+// place name for the "Tôi đang ở" prefill (name, not IP).
+type Place = { name: string; coordinates: Coordinates };
 
 type Status = "idle" | "locating" | "sending" | "success" | "error";
 
@@ -50,14 +55,23 @@ function getPosition(): Promise<{ lat: number; lng: number } | null> {
  * A single big button captures location (browser GPS, IP fallback on the server) plus an
  * optional reason and posts an anonymous help request. See src/app/api/help-requests.
  */
-export default function EmergencyHelp() {
+export default function EmergencyHelp({ places = [] }: { places?: Place[] }) {
   const [reason, setReason] = useState("");
+  const [place, setPlace] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [gpsUsed, setGpsUsed] = useState(false);
   const [contacts, setContacts] = useState<RankedContact[]>(NATIONAL_HOTLINES);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showOthers, setShowOthers] = useState(false);
   const busy = status === "locating" || status === "sending";
+
+  // Once the citizen edits the place field we stop auto-filling it. `placesRef` keeps the
+  // latest commune list available to the mount effect without making it a dependency.
+  const placeTouched = useRef(false);
+  const placesRef = useRef(places);
+  useEffect(() => {
+    placesRef.current = places;
+  }, [places]);
 
   // The picker's current number: the one the citizen tapped, else the nearest (first) contact.
   const selected = contacts.find((contact) => contact.id === selectedId) ?? contacts[0] ?? null;
@@ -71,7 +85,14 @@ export default function EmergencyHelp() {
     (async () => {
       try {
         const [response, position] = await Promise.all([fetch("/api/emergency-contacts"), getPosition()]);
-        if (!active || !response.ok) return;
+        if (!active) return;
+        // Prefill "Tôi đang ở" from the caller's GPS → nearest commune name (not IP), unless
+        // they've already typed their own.
+        if (position && !placeTouched.current) {
+          const name = nearestArea(position, placesRef.current)?.name;
+          if (name) setPlace(name);
+        }
+        if (!response.ok) return;
         const data = (await response.json()) as { contacts: EmergencyContact[] };
         const ranked: RankedContact[] = data.contacts.map((contact) => ({
           ...contact,
@@ -104,7 +125,11 @@ export default function EmergencyHelp() {
       const response = await fetch("/api/help-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...(position ?? {}), reason: reason.trim() || undefined }),
+        body: JSON.stringify({
+          ...(position ?? {}),
+          reason: reason.trim() || undefined,
+          place: place.trim() || undefined,
+        }),
       });
       if (!response.ok) throw new Error("request failed");
       setStatus("success");
@@ -144,6 +169,21 @@ export default function EmergencyHelp() {
       <p className="emergency-lead">
         Nhấn nút bên dưới để gửi tín hiệu cầu cứu kèm vị trí của bạn tới trưởng bản và đội cứu hộ.
       </p>
+
+      <label className="emergency-field">
+        <span>Tôi đang ở</span>
+        <input
+          type="text"
+          value={place}
+          onChange={(event) => {
+            placeTouched.current = true;
+            setPlace(event.target.value);
+          }}
+          maxLength={200}
+          placeholder="Ví dụ: Bản Phiêng Lơi, gần trường tiểu học…"
+          disabled={busy}
+        />
+      </label>
 
       <label className="emergency-field">
         <span>Mô tả tình huống (không bắt buộc)</span>

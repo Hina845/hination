@@ -115,7 +115,7 @@ export default function TimelineDock({
   }
 
   return (
-    <div className="timeline-dock" aria-label="Dòng thời gian dự báo">
+    <div className="timeline-dock" aria-label="Dòng thời gian dự báo" data-tour="map-timeline">
       {showSlider && nowIndex !== undefined && nowIndex >= 0 && (
         <button
           className="now-button"

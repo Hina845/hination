@@ -6,6 +6,7 @@ type HelpRequestRow = {
   lat: number;
   lng: number;
   reason: string | null;
+  place: string | null;
   source: string;
   created_at: number;
 };
@@ -16,6 +17,7 @@ function toHelpRequest(row: HelpRequestRow): HelpRequest {
     lat: row.lat,
     lng: row.lng,
     reason: row.reason,
+    place: row.place,
     source: row.source === "gps" ? "gps" : "ip",
     createdAt: row.created_at,
   };
@@ -26,14 +28,15 @@ export function createHelpRequest(input: {
   lat: number;
   lng: number;
   reason: string | null;
+  place: string | null;
   source: HelpRequestSource;
 }): number {
   const result = db
     .prepare(
-      `INSERT INTO help_requests (lat, lng, reason, source, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO help_requests (lat, lng, reason, place, source, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run(input.lat, input.lng, input.reason, input.source, Date.now());
+    .run(input.lat, input.lng, input.reason, input.place, input.source, Date.now());
   return Number(result.lastInsertRowid);
 }
 
@@ -45,7 +48,7 @@ export function createHelpRequest(input: {
 export function listRecentHelpRequests(sinceMs: number = Date.now() - 24 * 60 * 60 * 1000): HelpRequest[] {
   const rows = db
     .prepare(
-      `SELECT id, lat, lng, reason, source, created_at
+      `SELECT id, lat, lng, reason, place, source, created_at
        FROM help_requests
        WHERE created_at >= ?
        ORDER BY created_at DESC, id DESC`,

@@ -9,6 +9,7 @@ export type HelpRequest = {
   lat: number;
   lng: number;
   reason: string | null;
+  place: string | null; // citizen-stated location ("Tôi đang ở…"), prefilled from GPS, editable
   source: HelpRequestSource; // 'gps' = precise browser location, 'ip' = IP/centroid fallback
   createdAt: number; // epoch ms
 };

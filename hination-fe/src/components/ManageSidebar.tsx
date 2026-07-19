@@ -3,6 +3,10 @@
 import { NavigationArrow } from "@phosphor-icons/react";
 import Link from "next/link";
 
+import OnboardingTour from "@/components/onboarding/OnboardingTour";
+import TourHelpButton from "@/components/onboarding/TourHelpButton";
+import type { TourPage } from "@/lib/onboarding";
+
 type NavKey = "map" | "dashboard" | "manage" | "radio" | "rescue";
 
 type NavEntry = {
@@ -18,9 +22,19 @@ const NAV_ENTRIES: NavEntry[] = [
   { key: "rescue", label: "Cứu hộ", href: "/rescue" },
 ];
 
+// The sidebar renders on /manage, /radio and /rescue — each an onboarding tour page.
+const TOUR_PAGES: TourPage[] = ["manage", "radio", "rescue"];
+const tourPageFor = (active: NavKey): TourPage | null =>
+  (TOUR_PAGES as string[]).includes(active) ? (active as TourPage) : null;
+
 export default function ManageSidebar({ active }: { active: NavKey }) {
+  const tourPage = tourPageFor(active);
+
   return (
-    <aside className="hidden w-64 shrink-0 flex-col gap-9 border-r border-[rgb(15_23_42_/_8%)] bg-white px-6 py-8 text-base md:flex">
+    <aside
+      className="hidden w-64 shrink-0 flex-col gap-9 border-r border-[rgb(15_23_42_/_8%)] bg-white px-6 py-8 text-base md:flex"
+      data-tour="nav-sidebar"
+    >
       <div className="flex items-center gap-2.5 px-2 text-xl font-bold text-[#0f172a]">
         <NavigationArrow weight="fill" className="size-6 text-[#0f172a]" />
         <span>Điện Biên Forecast</span>
@@ -60,6 +74,17 @@ export default function ManageSidebar({ active }: { active: NavKey }) {
           );
         })}
       </nav>
+
+      {tourPage && (
+        <div className="mt-auto flex items-center gap-2 border-t border-[rgb(15_23_42_/_8%)] px-2 pt-5 text-sm text-[#64748b]">
+          <TourHelpButton
+            page={tourPage}
+            className="inline-flex size-8 items-center justify-center rounded-full border border-[#cbd5e1] text-[#475569] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+          />
+          <span>Xem lại hướng dẫn</span>
+          <OnboardingTour page={tourPage} />
+        </div>
+      )}
     </aside>
   );
 }

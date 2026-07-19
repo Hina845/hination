@@ -191,6 +191,20 @@ if (!villagerColumns.some((column) => column.name === "area_id")) {
   }
 }
 
+// Migration: `place` (the citizen-stated "Tôi đang ở…" location, prefilled from GPS and
+// editable) was added after the help_requests table shipped. Same parallel-build race as the
+// migrations above — swallow only "duplicate column name".
+const helpColumns = db.prepare("PRAGMA table_info(help_requests)").all() as { name: string }[];
+if (!helpColumns.some((column) => column.name === "place")) {
+  try {
+    db.exec("ALTER TABLE help_requests ADD COLUMN place TEXT");
+  } catch (error) {
+    if (!(error instanceof Error && /duplicate column name/i.test(error.message))) {
+      throw error;
+    }
+  }
+}
+
 db.prepare("INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)").run(
   "admin",
   bcrypt.hashSync("admin123", 12),

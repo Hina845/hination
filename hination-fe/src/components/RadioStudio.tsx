@@ -334,7 +334,7 @@ export default function RadioStudio({
         </div>
 
         {/* ───────────────────────── RIGHT COLUMN ──────────────────────── */}
-        <section className="rounded-2xl border border-[rgb(15_23_42_/_8%)] bg-white p-6 shadow-[0_0.75rem_2.25rem_rgb(15_23_42_/_6%)] md:p-7">
+        <section className="rounded-2xl border border-[rgb(15_23_42_/_8%)] bg-white p-6 shadow-[0_0.75rem_2.25rem_rgb(15_23_42_/_6%)] md:p-7" data-tour="radio-compose">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-xl font-bold text-[#0f172a]">Soạn nội dung cảnh báo</h2>
             <button
@@ -905,7 +905,7 @@ function NghePlayer({
 
 function SavedVoices({ recordings, onRecord }: { recordings: VoiceRecording[]; onRecord: () => void }) {
   return (
-    <section className="mt-8">
+    <section className="mt-8" data-tour="radio-recordings">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-[#0f172a]">Giọng nói đã lưu</h2>
         <button
@@ -1045,7 +1045,7 @@ function BroadcastHistory({
   if (broadcasts.length === 0) return null;
 
   return (
-    <section className="mt-8">
+    <section className="mt-8" data-tour="radio-history">
       <h2 className="text-xl font-bold text-[#0f172a]">Bản nháp &amp; lịch sử phát</h2>
       <ul className="mt-4 flex flex-col gap-3">
         {broadcasts.map((item) => {

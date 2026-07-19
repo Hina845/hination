@@ -2,7 +2,7 @@
 
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from "geojson";
 import L, { type LatLngTuple, type Layer, type PathOptions } from "leaflet";
-import { ArrowClockwise, Bell, CaretDown, Lifebuoy, MapTrifold, Megaphone, NavigationArrow, PaperPlaneTilt, Ruler, Stack, UsersThree, X } from "@phosphor-icons/react";
+import { ArrowClockwise, Bell, CaretDown, Lifebuoy, MapTrifold, Megaphone, NavigationArrow, PaperPlaneTilt, Ruler, SignIn, Stack, UsersThree, X } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
@@ -15,6 +15,8 @@ import EmergencyHelp from "@/components/EmergencyHelp";
 import { forecastIdFor } from "@/components/forecast-area-id";
 import type { ChiefSummary } from "@/components/ForecastMapShell";
 import HelpRequestLayer, { type HelpDot } from "@/components/HelpRequestLayer";
+import OnboardingTour from "@/components/onboarding/OnboardingTour";
+import TourHelpButton from "@/components/onboarding/TourHelpButton";
 import TimelineDock from "@/components/TimelineDock";
 import { mockHelpRequests } from "@/lib/mock-help-requests";
 import { useIsMobile } from "@/lib/use-is-mobile";
@@ -551,7 +553,7 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
       </MapContainer>
 
       {/* Navigation menu */}
-      <nav className={`nav-menu${navOpen ? " nav-menu--open" : ""}`} aria-label="Điều hướng">
+      <nav className={`nav-menu${navOpen ? " nav-menu--open" : ""}`} aria-label="Điều hướng" data-tour="map-nav">
         <button type="button" className="nav-brand" aria-expanded={navOpen} onClick={() => setNavOpen((open) => !open)}>
           <NavigationArrow weight="fill" />
           <span>Điện Biên Forecast</span>
@@ -576,6 +578,15 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
                 )}
               </li>
             ))}
+            {/* Shown only to anonymous viewers — a chief is already signed in. */}
+            {!chief && (
+              <li>
+                <Link href="/login" className="nav-item nav-item--login">
+                  <SignIn weight="bold" />
+                  Đăng nhập
+                </Link>
+              </li>
+            )}
           </ul>
         )}
       </nav>
@@ -605,7 +616,7 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
               {Number.isNaN(lastUpdatedMs) ? "—" : formatUpdated(lastUpdatedMs)}
             </span>
           </span>
-          <button type="button" className="data-status__refresh" onClick={refreshAll} disabled={isRefreshing} title="Tải lại toàn bộ dữ liệu">
+          <button type="button" className="data-status__refresh" data-tour="map-refresh" onClick={refreshAll} disabled={isRefreshing} title="Tải lại toàn bộ dữ liệu">
             <ArrowClockwise weight="bold" className={isRefreshing ? "spin" : undefined} />
             <span className="data-status__refresh-text">Làm mới tất cả</span>
           </button>
@@ -614,6 +625,7 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
           ref={bellRef}
           type="button"
           className="alert-bell"
+          data-tour="map-bell"
           aria-label="Cảnh báo"
           aria-expanded={notifOpen}
           onClick={() => setNotifOpen((open) => !open)}
@@ -626,6 +638,7 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
             ref={blastBtnRef}
             type="button"
             className="alert-bell blast-btn"
+            data-tour="map-blast"
             aria-label="Gửi SMS tới khu vực nguy hiểm"
             title="Gửi SMS tới khu vực nguy hiểm"
             aria-expanded={blastOpen}
@@ -634,11 +647,12 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
             <Megaphone weight="fill" />
           </button>
         )}
-        <div className="legends-bar">
+        <div className="legends-bar" data-tour="map-legend">
           <button type="button" className="legends-toggle" onClick={toggleAllLegends}>Chú giải</button>
           <button type="button" className={`tool-btn${disasterOpen ? " tool-btn--active" : ""}`} aria-label="Loại thiên tai" aria-pressed={disasterOpen} title="Loại thiên tai" onClick={() => setDisasterOpen((open) => !open)}><Ruler weight="regular" /></button>
           <button type="button" className={`tool-btn${dangerOpen ? " tool-btn--active" : ""}`} aria-label="Mức độ nguy hiểm" aria-pressed={dangerOpen} title="Mức độ nguy hiểm" onClick={() => setDangerOpen((open) => !open)}><Stack weight="regular" /></button>
           <button type="button" className={`tool-btn${helpVisible ? " tool-btn--active" : ""}`} aria-label="Yêu cầu cứu hộ" aria-pressed={helpVisible} title="Yêu cầu cứu hộ" onClick={() => setHelpVisible((open) => !open)}><Lifebuoy weight="regular" /></button>
+          <TourHelpButton page="map" className="tool-btn" />
         </div>
       </div>
 
@@ -782,7 +796,7 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
       {/* Citizen SOS screen — replaces the map on phones, reachable via the FAB anywhere. */}
       {view === "help" && (
         <div className="emergency-overlay">
-          <EmergencyHelp />
+          <EmergencyHelp places={forecast.days[0]?.areas ?? []} />
         </div>
       )}
 
@@ -790,6 +804,7 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
       <button
         type="button"
         className="help-fab"
+        data-tour="map-sos"
         onClick={toggleView}
         aria-label={view === "map" ? "Mở màn hình trợ giúp khẩn cấp" : "Quay lại bản đồ"}
       >
@@ -805,6 +820,8 @@ export default function ForecastMap({ forecast, tileUrl, chief }: { forecast: Fo
           </>
         )}
       </button>
+
+      <OnboardingTour page="map" />
     </main>
   );
 }

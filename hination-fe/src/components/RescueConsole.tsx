@@ -13,9 +13,10 @@ export type RescueRequestView = {
   lat: number;
   lng: number;
   reason: string | null;
+  place: string | null; // citizen-stated "Tôi đang ở…" location
   source: "gps" | "ip";
   createdAt: number;
-  locationName: string | null;
+  locationName: string | null; // nearest commune, reverse-geocoded from coordinates
 };
 
 type Tab = "requests" | "contacts";
@@ -64,7 +65,7 @@ export default function RescueConsole({
         </p>
       </header>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap gap-2" data-tour="rescue-tabs">
         <button type="button" className={tabClass(tab === "requests")} onClick={() => setTab("requests")}>
           Yêu cầu cứu trợ ({requests.length})
         </button>
@@ -73,11 +74,13 @@ export default function RescueConsole({
         </button>
       </div>
 
-      {tab === "requests" ? (
-        <RequestList requests={requests} />
-      ) : (
-        <ContactsTab contacts={contacts} areaOptions={areaOptions} isChief={isChief} />
-      )}
+      <div data-tour="rescue-requests">
+        {tab === "requests" ? (
+          <RequestList requests={requests} />
+        ) : (
+          <ContactsTab contacts={contacts} areaOptions={areaOptions} isChief={isChief} />
+        )}
+      </div>
     </main>
   );
 }
@@ -101,8 +104,11 @@ function RequestList({ requests }: { requests: RescueRequestView[] }) {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 text-lg font-semibold text-[#0f172a]">
               <MapPin weight="fill" className="size-5 text-[#ef4444]" />
-              {request.locationName ?? "Vị trí chưa xác định"}
+              {request.place ?? request.locationName ?? "Vị trí chưa xác định"}
             </div>
+            {request.place && request.locationName && (
+              <div className="text-sm text-[#475569]">Khu vực: {request.locationName}</div>
+            )}
             <div className="text-sm text-[#475569]">
               {request.lat.toFixed(5)}, {request.lng.toFixed(5)}
               <span
